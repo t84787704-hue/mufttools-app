@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "258091011057",
+    "project_id": "drivecare-1734e",
+    "storage_bucket": "drivecare-1734e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:258091011057:android:493dc3067c9cc023359250",
+        "android_client_info": {
+          "package_name": "com.aistudio.mufttools.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "258091011057-rb04ltip87cb9ntivshb45hjtgbjsheb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCP1-IE6dGRnHYyrQWiKbQUcT6hr9mj1uc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "258091011057-rb04ltip87cb9ntivshb45hjtgbjsheb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:258091011057:android:5160477ee7ae39e1359250",
+        "android_client_info": {
+          "package_name": "com.drivecare.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "258091011057-3mb9vsjo7ccdus6igv4pelq7dmtr5c1n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.drivecare.app",
+            "certificate_hash": "d92695c607071bf63dbf27ce38dc8c77ffee0e82"
+          }
+        },
+        {
+          "client_id": "258091011057-rb04ltip87cb9ntivshb45hjtgbjsheb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCP1-IE6dGRnHYyrQWiKbQUcT6hr9mj1uc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "258091011057-rb04ltip87cb9ntivshb45hjtgbjsheb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
