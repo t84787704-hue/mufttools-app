@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Center Wrench / Tool Symbol in Cyan Accent -->
+    <path
+        android:pathData="M38,32 L48,32 L54,42 L60,32 L70,32 C73.3,32 76,34.7 76,38 L76,70 C76,73.3 73.3,76 70,76 L38,76 C34.7,76 32,73.3 32,70 L32,38 C32,34.7 34.7,32 38,32 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="32"
+                android:startY="32"
+                android:endX="76"
+                android:endY="76"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF38BDF8" />
+                <item android:offset="1.0" android:color="#FFA855F7" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Inner M letter path in white -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,68 L40,44 L47,58 L54,44 L54,68 L50,68 L50,52 L45,62 L42,62 L37,52 L37,68 Z" />
+    <!-- Gear accent dot -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M64,50 A6,6 0 1,0 64,62 A6,6 0 1,0 64,50 Z" />
+</vector>
