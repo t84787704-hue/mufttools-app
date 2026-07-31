@@ -333,7 +333,7 @@ fun ToolDetailTemplate(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Our high-performance native engine for ${tool.title} is currently under final optimization for Version 1.1 release.",
+                            text = "Our high-performance 100% offline ML Kit and on-device native engine for ${tool.title} is optimized for local processing with zero server dependency.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary,
                             textAlign = TextAlign.Center
