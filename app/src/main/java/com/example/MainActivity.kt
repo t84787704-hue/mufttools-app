@@ -27,6 +27,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            com.tom_roush.pdfbox.android.PDFBoxResourceLoader.init(applicationContext)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
         enableEdgeToEdge()
         setContent {
             MuftToolsTheme {
