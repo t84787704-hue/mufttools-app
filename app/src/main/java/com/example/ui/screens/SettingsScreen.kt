@@ -294,7 +294,7 @@ fun SettingsScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "Free Tools • Version 1.0.1",
+                        text = "Free Tools • Version 1.0.0",
                         style = MaterialTheme.typography.labelMedium,
                         color = TextMuted
                     )
