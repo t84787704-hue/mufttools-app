@@ -50,13 +50,17 @@ fun MuftToolsTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val activity = view.context.findActivity()
-            if (activity != null) {
-                val window = activity.window
-                window.statusBarColor = DarkBackground.toArgb()
-                window.navigationBarColor = DarkBackground.toArgb()
-                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
-                WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
+            runCatching {
+                val activity = view.context.findActivity()
+                if (activity != null) {
+                    val window = activity.window
+                    window.statusBarColor = DarkBackground.toArgb()
+                    window.navigationBarColor = DarkBackground.toArgb()
+                    WindowCompat.getInsetsController(window, view).apply {
+                        isAppearanceLightStatusBars = false
+                        isAppearanceLightNavigationBars = false
+                    }
+                }
             }
         }
     }
