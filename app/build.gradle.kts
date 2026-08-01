@@ -20,42 +20,23 @@ android {
     applicationId = "com.aistudio.mufttools.app"
     minSdk = 24
     targetSdk = 35
-    versionCode = 8
-    versionName = "1.0.7"
+    versionCode = 9
+    versionName = "1.0.8"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
-    val keystorePath = System.getenv("KEYSTORE_PATH")
-    val storePass = System.getenv("STORE_PASSWORD")
-    val keyPass = System.getenv("KEY_PASSWORD")
-    val releaseKeystore = if (!keystorePath.isNullOrEmpty()) file(keystorePath) else file("${rootDir}/my-upload-key.jks")
-    val debugKeystore = file("${rootDir}/debug.keystore")
-
-    if (debugKeystore.exists()) {
-      create("debugConfig") {
-        storeFile = debugKeystore
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
-      }
-    }
-
     create("release") {
-      if (releaseKeystore.exists() && !storePass.isNullOrEmpty()) {
-        storeFile = releaseKeystore
-        storePassword = storePass
-        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
-        keyPassword = keyPass ?: storePass
-      } else if (debugKeystore.exists()) {
-        storeFile = debugKeystore
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
+      val ksFile = if (file("mufttools-release.jks").exists()) {
+        file("mufttools-release.jks")
       } else {
-        initWith(getByName("debug"))
+        file("${rootDir}/mufttools-release.jks")
       }
+      storeFile = ksFile
+      storePassword = "mufttools123"
+      keyAlias = "mufttools"
+      keyPassword = "mufttools123"
     }
   }
 
@@ -70,12 +51,7 @@ android {
     debug {
       isMinifyEnabled = false
       isShrinkResources = false
-      val customDebug = signingConfigs.findByName("debugConfig")
-      if (customDebug != null) {
-        signingConfig = customDebug
-      } else {
-        signingConfig = signingConfigs.getByName("debug")
-      }
+      signingConfig = signingConfigs.getByName("release")
     }
   }
   compileOptions {
