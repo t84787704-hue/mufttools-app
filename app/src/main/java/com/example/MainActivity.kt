@@ -12,11 +12,15 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.ui.screens.AboutUsScreen
 import com.example.ui.screens.BgRemoverScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ImageToolsScreen
 import com.example.ui.screens.PdfScannerScreen
+import com.example.ui.screens.PrivacyPolicyScreen
 import com.example.ui.screens.QrScannerScreen
+import com.example.ui.screens.SettingsScreen
+import com.example.ui.screens.TermsScreen
 import com.example.ui.screens.VideoCompressorScreen
 import com.example.ui.theme.MuftToolsTheme
 import com.example.viewmodel.HomeViewModel
@@ -61,7 +65,36 @@ fun MuftToolsNavGraph(
                 viewModel = viewModel,
                 onToolClick = { tool ->
                     navController.navigate(tool.route)
+                },
+                onNavigateSettings = {
+                    navController.navigate("settings")
                 }
+            )
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                onNavigatePrivacy = { navController.navigate("privacy_policy") },
+                onNavigateTerms = { navController.navigate("terms_of_use") },
+                onNavigateAbout = { navController.navigate("about_us") }
+            )
+        }
+
+        composable("privacy_policy") {
+            PrivacyPolicyScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable("terms_of_use") {
+            TermsScreen(
+                onBackClick = { navController.popBackStack() }
+            )
+        }
+
+        composable("about_us") {
+            AboutUsScreen(
+                onBackClick = { navController.popBackStack() }
             )
         }
 

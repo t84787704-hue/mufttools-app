@@ -24,8 +24,7 @@ data class ToolItem(
     val accentColor: Color,
     val icon: ImageVector,
     val route: String,
-    val rating: String,
-    val usageCount: String,
+    val statusText: String,
     val features: List<String>
 )
 
@@ -35,15 +34,14 @@ object ToolRepository {
             id = "pdf_scanner",
             title = "PDF Scanner & Tools",
             shortDescription = "Scan documents, merge, split, compress & convert PDFs 100% offline.",
-            detailedDescription = "Complete 100% offline PDF suite. Turn physical documents into high-quality PDFs using on-device ML Kit OCR, auto-crop, edge detection, and digital signature without internet.",
+            detailedDescription = "Complete 100% offline PDF suite. Turn physical documents into high-quality PDFs using on-device edge detection, auto-crop, image filtering, and PDF generation without internet.",
             category = "Document",
-            badge = "Offline ML",
+            badge = "Offline PDF",
             accentColor = CyanPrimary,
             icon = Icons.Default.PictureAsPdf,
             route = "pdf_scanner",
-            rating = "4.9★",
-            usageCount = "1.2M+ uses",
-            features = listOf("100% Offline ML Kit OCR", "HD Camera Document Scanner", "PDF Merger & Splitter", "PDF Password Protection")
+            statusText = "100% On-Device",
+            features = listOf("100% Offline Document Scanner", "Camera & Gallery Document Scan", "PDF Merger & Splitter", "PDF Page Extractor")
         ),
         ToolItem(
             id = "bg_remover",
@@ -51,55 +49,51 @@ object ToolRepository {
             shortDescription = "Remove image background on-device using ML Kit Selfie Segmentation.",
             detailedDescription = "Instant on-device ML Kit background eraser for photo editing, transparent PNG creation, and product catalog designs. Works 100% offline with zero cloud latency.",
             category = "AI Image",
-            badge = "On-Device ML",
+            badge = "ML Kit Offline",
             accentColor = VioletSecondary,
             icon = Icons.Default.AutoFixHigh,
             route = "bg_remover",
-            rating = "4.8★",
-            usageCount = "850K+ uses",
-            features = listOf("On-Device ML Kit Subject Eraser", "100% Offline & Private Processing", "Transparent PNG Export", "Custom Background Replacement")
+            statusText = "Offline Processing",
+            features = listOf("On-Device ML Kit Subject Eraser", "100% Offline & Private Processing", "Transparent PNG Export", "Custom Background Color")
         ),
         ToolItem(
             id = "qr_scanner",
             title = "QR Scanner & Generator",
             shortDescription = "Scan any QR code or barcode offline & generate custom styled QRs.",
-            detailedDescription = "Ultra-fast on-device ML Kit QR and Barcode scanner with flashlight support, scan history, and custom color QR generator for Wi-Fi, URLs, and contacts.",
+            detailedDescription = "Ultra-fast on-device ML Kit QR and Barcode scanner with flashlight support, scan history, and custom color QR generator for Wi-Fi, URLs, and text.",
             category = "Utility",
             badge = "Offline QR",
             accentColor = EmeraldTertiary,
             icon = Icons.Default.QrCodeScanner,
             route = "qr_scanner",
-            rating = "4.9★",
-            usageCount = "2.1M+ uses",
-            features = listOf("Instant ML Kit Barcode Scan", "100% Offline Camera & Gallery Scan", "Custom Logo QR Generator", "Wi-Fi & vCard QR Creation")
+            statusText = "Instant Scanner",
+            features = listOf("Instant Barcode & QR Scan", "100% Offline Camera & Image Scan", "Custom Color QR Generator", "Wi-Fi & Text QR Creation")
         ),
         ToolItem(
             id = "video_compressor",
             title = "Video Compressor",
-            shortDescription = "Reduce video file size offline without losing 1080p / 4K quality.",
-            detailedDescription = "Compress large MP4, MOV, and AVI video files on-device using hardware codecs to save phone storage or share easily on WhatsApp and Social Media.",
+            shortDescription = "Reduce video file size offline without losing quality.",
+            detailedDescription = "Compress large MP4 and video files on-device using Android hardware codecs to save phone storage or share easily on messaging apps.",
             category = "Media",
-            badge = "Local Codec",
+            badge = "Hardware Codec",
             accentColor = AccentAmber,
             icon = Icons.Default.VideoLibrary,
             route = "video_compressor",
-            rating = "4.7★",
-            usageCount = "950K+ uses",
-            features = listOf("100% On-Device Hardware Transcoding", "Custom Resolution & Bitrate", "Batch Video Compression", "Format Conversion (MP4/MOV)")
+            statusText = "Local Transcoding",
+            features = listOf("100% On-Device Hardware Transcoding", "Custom Resolution & Bitrate", "Save Storage Space", "Fast Local Export")
         ),
         ToolItem(
             id = "image_tools",
             title = "Image Tools",
             shortDescription = "Resize, crop, convert & compress images in 1 click offline.",
-            detailedDescription = "Multi-purpose on-device photo editor and converter tool. Resize dimensions, convert JPG/WEBP/PNG, compress kilobytes, and edit aspect ratios locally.",
+            detailedDescription = "Multi-purpose on-device photo editor and converter tool. Resize dimensions, convert JPG/WEBP/PNG, compress kilobytes, and crop aspect ratios locally.",
             category = "Graphics",
             badge = "5-in-1 Offline",
             accentColor = AccentRose,
             icon = Icons.Default.Crop,
             route = "image_tools",
-            rating = "4.8★",
-            usageCount = "1.5M+ uses",
-            features = listOf("100% Local Kilobyte Compression", "Format Converter (JPG/PNG/WEBP)", "Batch Aspect Crop", "EXIF Data Cleaner")
+            statusText = "Local Processing",
+            features = listOf("100% Local Image Compression", "Format Converter (JPG/PNG/WEBP)", "Aspect Crop & Rotate", "Quality Adjustments")
         )
     )
 }

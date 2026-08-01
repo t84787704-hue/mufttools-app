@@ -70,7 +70,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.ToolItem
-import com.example.ui.components.AdMobBannerPlaceholder
 import com.example.ui.theme.CyanPrimary
 import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.DarkSurface
@@ -81,13 +80,13 @@ import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.ui.theme.VioletSecondary
 import com.example.viewmodel.HomeViewModel
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: HomeViewModel,
-    onToolClick: (ToolItem) -> Unit
+    onToolClick: (ToolItem) -> Unit,
+    onNavigateSettings: () -> Unit
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredTools by viewModel.filteredTools.collectAsState()
@@ -96,7 +95,6 @@ fun HomeScreen(
     val selectedNavIndex by viewModel.selectedNavIndex.collectAsState()
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     val categories = listOf("All", "Document", "AI Image", "Utility", "Media", "Graphics", "Favorites")
 
@@ -111,7 +109,10 @@ fun HomeScreen(
             ) {
                 NavigationBarItem(
                     selected = selectedNavIndex == 0,
-                    onClick = { viewModel.selectNavIndex(0) },
+                    onClick = {
+                        viewModel.selectNavIndex(0)
+                        viewModel.onCategorySelected("All")
+                    },
                     icon = {
                         Icon(
                             imageVector = if (selectedNavIndex == 0) Icons.Filled.Home else Icons.Outlined.Home,
@@ -154,9 +155,7 @@ fun HomeScreen(
                     selected = selectedNavIndex == 2,
                     onClick = {
                         viewModel.selectNavIndex(2)
-                        scope.launch {
-                            snackbarHostState.showSnackbar("MuftTools v1.0.0 • All utilities are 100% Free!")
-                        }
+                        onNavigateSettings()
                     },
                     icon = {
                         Icon(
@@ -181,7 +180,7 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Header: App Title & Badge
+            // Header: App Title & Subtitle
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -228,7 +227,7 @@ fun HomeScreen(
                                     color = EmeraldTertiary.copy(alpha = 0.2f)
                                 ) {
                                     Text(
-                                        text = "FREE",
+                                        text = "OFFLINE",
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Black,
@@ -237,7 +236,7 @@ fun HomeScreen(
                                 }
                             }
                             Text(
-                                text = "Top Play Store Tools in One App",
+                                text = "All-in-One Offline Utility Tools",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = TextSecondary
                             )
@@ -327,7 +326,7 @@ fun HomeScreen(
                 }
             }
 
-            // Grid of 5 Cards for Top Play Store Tools
+            // Grid of 5 Offline Utility Tools
             LazyVerticalGrid(
                 columns = GridCells.Adaptive(minSize = 160.dp),
                 modifier = Modifier
@@ -348,13 +347,13 @@ fun HomeScreen(
                     ) {
                         Column {
                             Text(
-                                text = if (selectedCategory == "Favorites") "Your Favorite Tools" else "Top Play Store Tools",
+                                text = if (selectedCategory == "Favorites") "Your Favorite Tools" else "Offline Utility Tools",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
                             Text(
-                                text = "${filteredTools.size} utilities available",
+                                text = "${filteredTools.size} tools ready to use offline",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = TextMuted
                             )
@@ -408,18 +407,6 @@ fun HomeScreen(
                             }
                         }
                     }
-                }
-
-                // AdMob Banner Space inside scrollable grid bottom
-                item(span = { GridItemSpan(maxLineSpan) }) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    AdMobBannerPlaceholder(
-                        onAdClick = {
-                            scope.launch {
-                                snackbarHostState.showSnackbar("AdMob Banner unit ready for Monetization SDK")
-                            }
-                        }
-                    )
                 }
             }
         }
@@ -491,7 +478,7 @@ fun ToolCardItem(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Badge & Category
+                // Badge & Status Text
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -511,7 +498,7 @@ fun ToolCardItem(
                     }
 
                     Text(
-                        text = tool.rating,
+                        text = tool.statusText,
                         style = MaterialTheme.typography.labelSmall,
                         color = TextMuted,
                         fontSize = 10.sp
@@ -545,14 +532,14 @@ fun ToolCardItem(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Action Row: Usage count & Arrow icon
+            // Action Row: Arrow button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = tool.usageCount,
+                    text = "Tap to open",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextMuted,
                     fontSize = 11.sp
