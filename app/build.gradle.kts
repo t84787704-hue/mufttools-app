@@ -28,18 +28,15 @@ android {
 
   signingConfigs {
     create("release") {
-      val ksFile = when {
-        file("mufttools-release.jks").exists() -> file("mufttools-release.jks")
-        file("${rootDir}/mufttools-release.jks").exists() -> file("${rootDir}/mufttools-release.jks")
-        file("${rootDir}/app/mufttools-release.jks").exists() -> file("${rootDir}/app/mufttools-release.jks")
-        else -> null
-      }
-      if (ksFile != null && ksFile.exists()) {
-        storeFile = ksFile
-        storePassword = "mufttools123"
-        keyAlias = "mufttools"
-        keyPassword = "mufttools123"
-      }
+      val ksFile = file("mufttools-release.jks").takeIf { it.exists() }
+        ?: file("${rootDir}/mufttools-release.jks").takeIf { it.exists() }
+        ?: file("${rootDir}/app/mufttools-release.jks").takeIf { it.exists() }
+        ?: file("mufttools-release.jks")
+
+      storeFile = ksFile
+      storePassword = "mufttools123"
+      keyAlias = "mufttools"
+      keyPassword = "mufttools123"
     }
   }
 
@@ -49,18 +46,12 @@ android {
       isMinifyEnabled = false
       isShrinkResources = false
       proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
-      val relConfig = signingConfigs.findByName("release")
-      if (relConfig?.storeFile != null && relConfig.storeFile?.exists() == true) {
-        signingConfig = relConfig
-      }
+      signingConfig = signingConfigs.getByName("release")
     }
     debug {
       isMinifyEnabled = false
       isShrinkResources = false
-      val relConfig = signingConfigs.findByName("release")
-      if (relConfig?.storeFile != null && relConfig.storeFile?.exists() == true) {
-        signingConfig = relConfig
-      }
+      signingConfig = signingConfigs.getByName("release")
     }
   }
   compileOptions {
