@@ -19,23 +19,36 @@ android {
     applicationId = "com.aistudio.mufttools.app"
     minSdk = 24
     targetSdk = 35
-    versionCode = 4
-    versionName = "1.0.3"
+    versionCode = 6
+    versionName = "1.0.5"
+    multiDexEnabled = true
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
 
   signingConfigs {
-    create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
-    }
+    val keystorePath = System.getenv("KEYSTORE_PATH")
+    val storePass = System.getenv("STORE_PASSWORD")
+    val keyPass = System.getenv("KEY_PASSWORD")
+    val releaseKeystore = if (!keystorePath.isNullOrEmpty()) file(keystorePath) else file("${rootDir}/my-upload-key.jks")
     val debugKeystore = file("${rootDir}/debug.keystore")
+
     if (debugKeystore.exists()) {
       create("debugConfig") {
+        storeFile = debugKeystore
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
+    }
+
+    create("release") {
+      if (releaseKeystore.exists() && !storePass.isNullOrEmpty()) {
+        storeFile = releaseKeystore
+        storePassword = storePass
+        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
+        keyPassword = keyPass ?: storePass
+      } else if (debugKeystore.exists()) {
         storeFile = debugKeystore
         storePassword = "android"
         keyAlias = "androiddebugkey"
@@ -78,6 +91,7 @@ android {
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
+  implementation("androidx.multidex:multidex:2.0.1")
   implementation(platform(libs.androidx.compose.bom))
   // implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
