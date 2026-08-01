@@ -205,7 +205,7 @@ fun HomeScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Build,
-                                contentDescription = "MuftTools Logo",
+                                contentDescription = "Free Tools Logo",
                                 modifier = Modifier.size(24.dp),
                                 tint = Color.White
                             )
@@ -216,7 +216,7 @@ fun HomeScreen(
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = "MuftTools",
+                                    text = "Free Tools",
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = TextPrimary

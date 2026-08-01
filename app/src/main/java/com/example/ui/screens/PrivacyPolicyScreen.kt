@@ -147,7 +147,7 @@ fun PrivacyPolicyScreen(
                         color = EmeraldTertiary.copy(alpha = 0.1f)
                     ) {
                         Text(
-                            text = "MuftTools works 100% offline. We do not collect, store or share any personal data. All processing happens on-device.",
+                            text = "Free Tools works 100% offline. We do not collect, store or share any personal data. All processing happens on-device.",
                             modifier = Modifier.padding(12.dp),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
@@ -160,7 +160,7 @@ fun PrivacyPolicyScreen(
 
             PrivacySection(
                 title = "1. Information We Do Not Collect",
-                body = "MuftTools does not collect any personal information, location data, device IDs, contacts, photos, or documents. All your files remain strictly local to your Android device."
+                body = "Free Tools does not collect any personal information, location data, device IDs, contacts, photos, or documents. All your files remain strictly local to your Android device."
             )
 
             PrivacySection(
@@ -175,7 +175,7 @@ fun PrivacyPolicyScreen(
 
             PrivacySection(
                 title = "4. Zero Third-Party Tracking",
-                body = "MuftTools contains no analytics SDKs, no ad trackers, and no external telemetry tools. Your usage is 100% anonymous and offline."
+                body = "Free Tools contains no analytics SDKs, no ad trackers, and no external telemetry tools. Your usage is 100% anonymous and offline."
             )
 
             PrivacySection(

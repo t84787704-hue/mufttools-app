@@ -142,7 +142,7 @@ fun SettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Build,
-                            contentDescription = "MuftTools",
+                            contentDescription = "Free Tools",
                             modifier = Modifier.size(28.dp),
                             tint = Color.White
                         )
@@ -153,7 +153,7 @@ fun SettingsScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
-                                text = "MuftTools",
+                                text = "Free Tools",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
@@ -221,7 +221,7 @@ fun SettingsScreen(
             SettingsOptionCard(
                 icon = Icons.Default.Info,
                 iconColor = CyanPrimary,
-                title = "About MuftTools",
+                title = "About Free Tools",
                 subtitle = "Learn about offline local utility capabilities",
                 onClick = onNavigateAbout
             )
@@ -232,7 +232,7 @@ fun SettingsScreen(
                 icon = Icons.Default.Star,
                 iconColor = Color(0xFFFFB74D),
                 title = "Rate on Play Store",
-                subtitle = "Support MuftTools by giving a review",
+                subtitle = "Support Free Tools by giving a review",
                 onClick = {
                     val packageName = context.packageName
                     try {
@@ -250,12 +250,12 @@ fun SettingsScreen(
             SettingsOptionCard(
                 icon = Icons.Default.Share,
                 iconColor = CyanPrimary,
-                title = "Share MuftTools",
+                title = "Share Free Tools",
                 subtitle = "Share offline utility tools with friends",
                 onClick = {
                     val sendIntent = Intent().apply {
                         action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, "Check out MuftTools: 100% Free & Offline Utility Tools (PDF Scanner, BG Remover, QR Scanner, Video Compressor & Image Tools)!")
+                        putExtra(Intent.EXTRA_TEXT, "Check out Free Tools: 100% Free & Offline Utility Tools (PDF Scanner, BG Remover, QR Scanner, Video Compressor & Image Tools)!")
                         type = "text/plain"
                     }
                     val shareIntent = Intent.createChooser(sendIntent, "Share MuftTools")
@@ -272,7 +272,7 @@ fun SettingsScreen(
                 onClick = {
                     val intent = Intent(Intent.ACTION_SENDTO).apply {
                         data = Uri.parse("mailto:t84787704@gmail.com")
-                        putExtra(Intent.EXTRA_SUBJECT, "MuftTools Feedback & Support")
+                        putExtra(Intent.EXTRA_SUBJECT, "Free Tools Feedback & Support")
                     }
                     try {
                         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -294,7 +294,7 @@ fun SettingsScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = "MuftTools • Version 1.0.0",
+                        text = "Free Tools • Version 1.0.8",
                         style = MaterialTheme.typography.labelMedium,
                         color = TextMuted
                     )

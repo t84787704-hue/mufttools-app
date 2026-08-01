@@ -75,22 +75,22 @@ fun TermsScreen(
         ) {
             TermSection(
                 title = "1. Acceptance of Terms",
-                body = "By downloading and using MuftTools, you agree to comply with these terms. If you do not agree, please do not use the application."
+                body = "By downloading and using Free Tools, you agree to comply with these terms. If you do not agree, please do not use the application."
             )
 
             TermSection(
                 title = "2. Free & Offline Usage",
-                body = "MuftTools is provided 100% free of charge for personal and commercial productivity. All features run locally on your Android device without requiring internet connectivity."
+                body = "Free Tools is provided 100% free of charge for personal and commercial productivity. All features run locally on your Android device without requiring internet connectivity."
             )
 
             TermSection(
                 title = "3. User Responsibility",
-                body = "You are solely responsible for the documents, photos, videos, and QR codes processed using MuftTools. MuftTools does not claim any ownership over your content."
+                body = "You are solely responsible for the documents, photos, videos, and QR codes processed using Free Tools. Free Tools does not claim any ownership over your content."
             )
 
             TermSection(
                 title = "4. Disclaimer of Warranties",
-                body = "MuftTools is provided 'as is' without warranties of any kind. While we strive for maximum accuracy and performance in image processing and document generation, we are not liable for any data loss."
+                body = "Free Tools is provided 'as is' without warranties of any kind. While we strive for maximum accuracy and performance in image processing and document generation, we are not liable for any data loss."
             )
 
             TermSection(

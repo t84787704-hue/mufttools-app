@@ -61,7 +61,7 @@ fun AboutUsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "About MuftTools",
+                        text = "About Free Tools",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
@@ -110,14 +110,14 @@ fun AboutUsScreen(
             }
 
             Text(
-                text = "MuftTools - All-in-One Offline Utility Tools",
+                text = "Free Tools - All-in-One Offline Utility Tools",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
 
             Text(
-                text = "MuftTools was built with a simple mission: Provide powerful, private, and 100% offline utility tools directly on your device without subscription fees, ads, or data tracking.",
+                text = "Free Tools was built with a simple mission: Provide powerful, private, and 100% offline utility tools directly on your device without subscription fees, ads, or data tracking.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary,
                 lineHeight = 22.sp
