@@ -2,6 +2,7 @@
 
 plugins {
   alias(libs.plugins.android.application)
+  alias(libs.plugins.kotlin.android)
   alias(libs.plugins.kotlin.compose)
   alias(libs.plugins.google.devtools.ksp)
   alias(libs.plugins.roborazzi)
@@ -19,9 +20,8 @@ android {
     applicationId = "com.aistudio.mufttools.app"
     minSdk = 24
     targetSdk = 35
-    versionCode = 6
-    versionName = "1.0.5"
-    multiDexEnabled = true
+    versionCode = 8
+    versionName = "1.0.7"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -53,6 +53,8 @@ android {
         storePassword = "android"
         keyAlias = "androiddebugkey"
         keyPassword = "android"
+      } else {
+        initWith(getByName("debug"))
       }
     }
   }
@@ -61,10 +63,13 @@ android {
     release {
       isCrunchPngs = false
       isMinifyEnabled = false
-      proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+      isShrinkResources = false
+      proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.getByName("release")
     }
     debug {
+      isMinifyEnabled = false
+      isShrinkResources = false
       val customDebug = signingConfigs.findByName("debugConfig")
       if (customDebug != null) {
         signingConfig = customDebug
@@ -76,6 +81,9 @@ android {
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
+  }
+  kotlinOptions {
+    jvmTarget = "11"
   }
   buildFeatures {
     compose = true
@@ -91,7 +99,6 @@ android {
 // Some unused dependencies are commented out below instead of being removed.
 // This makes it easy to add them back in the future if needed.
 dependencies {
-  implementation("androidx.multidex:multidex:2.0.1")
   implementation(platform(libs.androidx.compose.bom))
   // implementation(platform(libs.firebase.bom))
   // implementation(libs.accompanist.permissions)
