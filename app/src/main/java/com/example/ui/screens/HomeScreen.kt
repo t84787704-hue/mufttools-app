@@ -265,6 +265,7 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .height(50.dp)
                         .testTag("search_bar_input"),
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, color = TextPrimary),
                     placeholder = {
                         Text(
                             text = "Search PDF Scanner, BG Eraser, QR, Video...",
@@ -450,7 +451,7 @@ fun ToolCardItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(215.dp)
+            .height(238.dp)
             .testTag("tool_card_${tool.id}")
             .border(
                 1.dp,
@@ -514,13 +515,14 @@ fun ToolCardItem(
                 ) {
                     Surface(
                         shape = CircleShape,
-                        color = tool.accentColor.copy(alpha = 0.2f)
+                        color = tool.accentColor.copy(alpha = 0.2f),
+                        modifier = Modifier.weight(1f, fill = false)
                     ) {
                         Text(
                             text = tool.badge,
                             modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
-                            fontSize = 10.sp,
+                            fontSize = 9.5.sp,
                             color = tool.accentColor,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
@@ -528,11 +530,13 @@ fun ToolCardItem(
                         )
                     }
 
+                    Spacer(modifier = Modifier.width(4.dp))
+
                     Text(
                         text = tool.statusText,
                         style = MaterialTheme.typography.labelSmall,
                         color = TextMuted,
-                        fontSize = 10.sp,
+                        fontSize = 9.5.sp,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
@@ -541,14 +545,15 @@ fun ToolCardItem(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
-                // Title
+                // Title (up to 2 lines)
                 Text(
                     text = tool.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
+                    fontSize = 14.5.sp,
+                    lineHeight = 18.sp,
                     color = TextPrimary,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
 
