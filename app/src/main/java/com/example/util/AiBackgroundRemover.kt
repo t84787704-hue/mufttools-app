@@ -44,13 +44,29 @@ object AiBackgroundRemover {
     private var lastLoadError: String? = null
 
     private fun loadModelFile(context: Context, modelName: String): ByteBuffer? {
-        return try {
+        try {
             val fileDescriptor = context.assets.openFd(modelName)
             val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
             val fileChannel = inputStream.channel
             val startOffset = fileDescriptor.startOffset
             val declaredLength = fileDescriptor.declaredLength
-            fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+            val mappedBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+            Log.i(TAG, "Successfully mapped $modelName via openFd (size=$declaredLength bytes)")
+            return mappedBuffer
+        } catch (e: Exception) {
+            Log.w(TAG, "openFd failed for $modelName (${e.localizedMessage}), falling back to direct InputStream read")
+        }
+
+        return try {
+            context.assets.open(modelName).use { inputStream ->
+                val bytes = inputStream.readBytes()
+                val buffer = ByteBuffer.allocateDirect(bytes.size)
+                buffer.order(ByteOrder.nativeOrder())
+                buffer.put(bytes)
+                buffer.rewind()
+                Log.i(TAG, "Successfully read $modelName into direct ByteBuffer (size=${bytes.size} bytes)")
+                buffer
+            }
         } catch (e: Exception) {
             val err = "Failed to load $modelName from assets: ${e.localizedMessage}"
             Log.e(TAG, err, e)
@@ -110,7 +126,7 @@ object AiBackgroundRemover {
             try {
                 setUseNNAPI(true)
             } catch (e: Exception) {
-                logs.add("NNAPI delegate unavailable, falling back to CPU threads")
+                logs.add("NNAPI delegate flag set failed, using CPU threads")
             }
         }
 
@@ -118,16 +134,30 @@ object AiBackgroundRemover {
             Interpreter(modelBuffer, options).also {
                 tfliteInterpreter = it
                 interpreterModelPath = modelToUse
-                logs.add("TensorFlow Lite Interpreter created successfully for $modelToUse")
+                logs.add("TensorFlow Lite Interpreter created successfully for $modelToUse (NNAPI/GPU)")
                 Log.i(TAG, "TFLite Interpreter initialized successfully for $modelToUse")
                 lastLoadError = null
             }
         } catch (e: Exception) {
-            val err = "Interpreter initialization failed for $modelToUse: ${e.localizedMessage}"
-            logs.add("ERROR: $err")
-            Log.e(TAG, err, e)
-            lastLoadError = err
-            null
+            logs.add("Interpreter init with NNAPI failed (${e.localizedMessage}), retrying with CPU options...")
+            val cpuOptions = Interpreter.Options().apply {
+                setNumThreads(Runtime.getRuntime().availableProcessors().coerceIn(2, 6))
+            }
+            try {
+                Interpreter(modelBuffer, cpuOptions).also {
+                    tfliteInterpreter = it
+                    interpreterModelPath = modelToUse
+                    logs.add("TensorFlow Lite Interpreter created successfully for $modelToUse (Pure CPU)")
+                    Log.i(TAG, "TFLite Interpreter initialized successfully for $modelToUse on CPU")
+                    lastLoadError = null
+                }
+            } catch (cpuEx: Exception) {
+                val err = "Interpreter initialization failed for $modelToUse: ${cpuEx.localizedMessage}"
+                logs.add("ERROR: $err")
+                Log.e(TAG, err, cpuEx)
+                lastLoadError = err
+                null
+            }
         }
     }
 

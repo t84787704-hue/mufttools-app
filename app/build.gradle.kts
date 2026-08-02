@@ -66,6 +66,9 @@ android {
     compose = true
     buildConfig = true
   }
+  androidResources {
+    noCompress += "tflite"
+  }
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
