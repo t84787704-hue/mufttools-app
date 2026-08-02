@@ -18,7 +18,7 @@ class HomeViewModel : ViewModel() {
     private val _selectedCategory = MutableStateFlow("All")
     val selectedCategory: StateFlow<String> = _selectedCategory
 
-    private val _favoriteIds = MutableStateFlow<Set<String>>(setOf("pdf_scanner", "bg_remover"))
+    private val _favoriteIds = MutableStateFlow<Set<String>>(setOf("pdf_scanner"))
     val favoriteIds: StateFlow<Set<String>> = _favoriteIds
 
     private val _selectedNavIndex = MutableStateFlow(0)

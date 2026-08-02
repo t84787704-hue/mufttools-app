@@ -101,7 +101,7 @@ fun HomeScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    val categories = listOf("All", "Document", "AI Image", "Utility", "Media", "Graphics", "Favorites")
+    val categories = listOf("All", "Document", "Utility", "Media", "Graphics", "Favorites")
 
     Scaffold(
         containerColor = DarkBackground,
@@ -289,7 +289,7 @@ fun HomeScreen(
                         ) {
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    text = "Search PDF Scanner, BG Eraser, QR, Video...",
+                                    text = "Search PDF Scanner, QR, Video, Image Tools...",
                                     color = TextMuted,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontSize = 13.sp,

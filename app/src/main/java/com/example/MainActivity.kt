@@ -13,7 +13,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.screens.AboutUsScreen
-import com.example.ui.screens.BgRemoverScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ImageToolsScreen
 import com.example.ui.screens.PdfScannerScreen
@@ -102,14 +101,6 @@ fun MuftToolsNavGraph(
             PdfScannerScreen(
                 isFavorite = favoriteIds.contains("pdf_scanner"),
                 onToggleFavorite = { viewModel.toggleFavorite("pdf_scanner") },
-                onBackClick = { navController.popBackStack() }
-            )
-        }
-
-        composable("bg_remover") {
-            BgRemoverScreen(
-                isFavorite = favoriteIds.contains("bg_remover"),
-                onToggleFavorite = { viewModel.toggleFavorite("bg_remover") },
                 onBackClick = { navController.popBackStack() }
             )
         }

@@ -1,7 +1,6 @@
 package com.example.data
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -42,19 +41,6 @@ object ToolRepository {
             route = "pdf_scanner",
             statusText = "100% On-Device",
             features = listOf("100% Offline Document Scanner", "Camera & Gallery Document Scan", "PDF Merger & Splitter", "PDF Page Extractor")
-        ),
-        ToolItem(
-            id = "bg_remover",
-            title = "Background Remover",
-            shortDescription = "Remove image background on-device using ML Kit Selfie Segmentation.",
-            detailedDescription = "Instant on-device ML Kit background eraser for photo editing, transparent PNG creation, and product catalog designs. Works 100% offline with zero cloud latency.",
-            category = "AI Image",
-            badge = "ML Kit Offline",
-            accentColor = VioletSecondary,
-            icon = Icons.Default.AutoFixHigh,
-            route = "bg_remover",
-            statusText = "Offline Processing",
-            features = listOf("On-Device ML Kit Subject Eraser", "100% Offline & Private Processing", "Transparent PNG Export", "Custom Background Color")
         ),
         ToolItem(
             id = "qr_scanner",

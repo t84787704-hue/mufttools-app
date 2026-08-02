@@ -37,7 +37,6 @@ android {
       storePassword = "mufttools123"
       keyAlias = "mufttools"
       keyPassword = "mufttools123"
-      storeType = "PKCS12"
     }
   }
 
@@ -52,7 +51,6 @@ android {
     debug {
       isMinifyEnabled = false
       isShrinkResources = false
-      signingConfig = signingConfigs.getByName("release")
     }
   }
   compileOptions {
@@ -65,9 +63,6 @@ android {
   buildFeatures {
     compose = true
     buildConfig = true
-  }
-  androidResources {
-    noCompress += "tflite"
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
 }
@@ -88,10 +83,6 @@ dependencies {
   implementation(libs.androidx.camera.view)
   implementation(libs.coil.compose)
   implementation(libs.pdfbox.android)
-  implementation(libs.mlkit.segmentation.selfie)
-  implementation(libs.tensorflow.lite)
-  implementation(libs.tensorflow.lite.gpu)
-  implementation(libs.tensorflow.lite.support)
   implementation(libs.mlkit.barcode.scanning)
   implementation(libs.zxing.core)
   implementation(libs.androidx.media3.transformer)
