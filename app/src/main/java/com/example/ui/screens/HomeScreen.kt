@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
@@ -257,32 +260,55 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Search Bar (Sleek height)
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.onSearchQueryChanged(it) },
+                // Search Bar (Custom container guaranteeing vertical text centering with zero clipping)
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(50.dp)
+                        .height(48.dp)
                         .testTag("search_bar_input"),
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, color = TextPrimary),
-                    placeholder = {
-                        Text(
-                            text = "Search PDF Scanner, BG Eraser, QR, Video...",
-                            color = TextMuted,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontSize = 13.sp
-                        )
-                    },
-                    leadingIcon = {
+                    shape = RoundedCornerShape(14.dp),
+                    color = DarkSurface,
+                    border = BorderStroke(1.dp, DarkSurfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
                             tint = CyanPrimary,
                             modifier = Modifier.size(20.dp)
                         )
-                    },
-                    trailingIcon = {
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Box(
+                            modifier = Modifier.weight(1f),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    text = "Search PDF Scanner, BG Eraser, QR, Video...",
+                                    color = TextMuted,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            BasicTextField(
+                                value = searchQuery,
+                                onValueChange = { viewModel.onSearchQueryChanged(it) },
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    fontSize = 13.5.sp,
+                                    color = TextPrimary
+                                ),
+                                singleLine = true,
+                                cursorBrush = SolidColor(CyanPrimary)
+                            )
+                        }
                         if (searchQuery.isNotEmpty()) {
                             IconButton(
                                 onClick = { viewModel.onSearchQueryChanged("") },
@@ -296,18 +322,8 @@ fun HomeScreen(
                                 )
                             }
                         }
-                    },
-                    shape = RoundedCornerShape(16.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = DarkSurface,
-                        unfocusedContainerColor = DarkSurface,
-                        focusedBorderColor = CyanPrimary,
-                        unfocusedBorderColor = DarkSurfaceVariant,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    ),
-                    singleLine = true
-                )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
