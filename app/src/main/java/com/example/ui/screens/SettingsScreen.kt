@@ -262,7 +262,7 @@ fun SettingsScreen(
                 onClick = {
                     val sendIntent = Intent().apply {
                         action = Intent.ACTION_SEND
-                        putExtra(Intent.EXTRA_TEXT, "Check out Free Tools: 100% Free & Offline Utility Tools (PDF Scanner, BG Remover, QR Scanner, Video Compressor & Image Tools)!")
+                        putExtra(Intent.EXTRA_TEXT, "Check out Free Tools: 100% Free & Offline Utility Tools (PDF Scanner, QR Scanner, Video Compressor & Image Tools)!")
                         type = "text/plain"
                     }
                     val shareIntent = Intent.createChooser(sendIntent, "Share MuftTools")

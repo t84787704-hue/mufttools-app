@@ -1,6 +1,6 @@
 {
   "name": "Free Tools",
-  "description": "All-in-one free utility tools: PDF Scanner, AI Background Remover, QR Tools, Video Compressor & Image Tools.",
+  "description": "All-in-one free utility tools: PDF Scanner, QR Tools, Video Compressor & Image Tools.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

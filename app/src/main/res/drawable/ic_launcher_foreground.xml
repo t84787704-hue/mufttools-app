@@ -5,27 +5,153 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Center Wrench / Tool Symbol in Cyan Accent -->
+
+    <!-- Top Handle Arch (Silver) -->
     <path
-        android:pathData="M38,32 L48,32 L54,42 L60,32 L70,32 C73.3,32 76,34.7 76,38 L76,70 C76,73.3 73.3,76 70,76 L38,76 C34.7,76 32,73.3 32,70 L32,38 C32,34.7 34.7,32 38,32 Z">
+        android:pathData="M43,26 C43,21 65,21 65,26 L65,33 L60,33 L60,26 C60,23 48,23 48,26 L48,33 L43,33 Z">
         <aapt:attr name="android:fillColor">
             <gradient
-                android:startX="32"
-                android:startY="32"
-                android:endX="76"
-                android:endY="76"
+                android:startX="43"
+                android:startY="21"
+                android:endX="65"
+                android:endY="33"
                 android:type="linear">
-                <item android:offset="0.0" android:color="#FF38BDF8" />
+                <item android:offset="0.0" android:color="#FFF8FAFC" />
+                <item android:offset="1.0" android:color="#FFCBD5E1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Wrench emblem in center of handle -->
+    <path
+        android:fillColor="#F1F5F9"
+        android:pathData="M51,28 C49,26 51,22 54,22 C57,22 59,26 57,28 L57,36 C59,38 57,41 54,41 C51,41 49,38 51,36 Z" />
+    <path
+        android:fillColor="#475569"
+        android:pathData="M52,24 C53,23 55,23 56,24 L54,27 Z" />
+
+    <!-- 1. PDF Card (Left) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M26,35 L38,35 C40,35 41,36 41,38 L41,53 C41,55 40,56 38,56 L26,56 C24,56 23,55 23,53 L23,38 C23,36 24,35 26,35 Z" />
+    <!-- PDF Red Banner -->
+    <path
+        android:fillColor="#EF4444"
+        android:pathData="M24,40 L40,40 L40,48 L24,48 Z" />
+    <!-- PDF Text Lines -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M26,42 L28,42 L28,46 L26,46 Z M29,42 L33,42 C34,42 35,43 35,44 C35,45 34,46 33,46 L29,46 Z M36,42 L39,42 L39,44 L36,44 L36,46 L39,46 Z" />
+
+    <!-- 2. Image Card (Blue) -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M39,37 L50,37 C52,37 53,38 53,40 L53,53 C53,55 52,56 50,56 L39,56 C37,56 36,55 36,53 L36,40 C36,38 37,37 39,37 Z" />
+    <!-- Sun -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,41 A2,2 0 1,0 48,45 A2,2 0 1,0 48,41 Z" />
+    <!-- Mountains -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,52 L42,46 L46,52 Z M44,52 L47,48 L51,52 Z" />
+
+    <!-- 3. QR Code Card (White) -->
+    <path
+        android:fillColor="#F8FAFC"
+        android:pathData="M53,37 L64,37 C66,37 67,38 67,40 L67,53 C67,55 66,56 64,56 L53,56 C51,56 50,55 50,53 L50,40 C50,38 51,37 53,37 Z" />
+    <!-- QR Pixels -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M52,39 h4 v4 h-4 z M58,39 h4 v4 h-4 z M52,45 h4 v4 h-4 z M58,45 h2 v2 h-2 z M60,47 h2 v2 h-2 z M52,51 h6 v2 h-6 z" />
+
+    <!-- 4. Video Card (Purple) -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M67,35 L79,35 C81,35 82,36 82,38 L82,53 C82,55 81,56 79,56 L67,56 C65,56 64,55 64,53 L64,38 C64,36 65,35 67,35 Z" />
+    <!-- Film Strip Dots & Play Triangle -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M66,37 h2 v2 h-2 z M66,51 h2 v2 h-2 z M80,37 h2 v2 h-2 z M80,51 h2 v2 h-2 z M70,41 L78,45 L70,49 Z" />
+
+    <!-- Toolbox Caddy Body -->
+    <path
+        android:pathData="M22,48 L86,48 C89,48 91,50 91,53 L87,83 C87,86 84,88 81,88 L27,88 C24,88 21,86 21,83 L17,53 C17,50 19,48 22,48 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="22"
+                android:startY="48"
+                android:endX="86"
+                android:endY="88"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FF7C3AED" />
+                <item android:offset="0.5" android:color="#FF6D28D9" />
+                <item android:offset="1.0" android:color="#FF4C1D95" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Toolbox Rim Accent -->
+    <path
+        android:pathData="M20,48 L88,48 L88,52 L20,52 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="20"
+                android:startY="48"
+                android:endX="88"
+                android:endY="52"
+                android:type="linear">
+                <item android:offset="0.0" android:color="#FFA7F3D0" />
+                <item android:offset="0.5" android:color="#FFE0E7FF" />
                 <item android:offset="1.0" android:color="#FFA855F7" />
             </gradient>
         </aapt:attr>
     </path>
-    <!-- Inner M letter path in white -->
+
+    <!-- Silver Lock Latch on Front -->
+    <path
+        android:fillColor="#CBD5E1"
+        android:pathData="M49,48 L59,48 L58,57 L50,57 Z" />
+    <path
+        android:fillColor="#475569"
+        android:pathData="M52,51 L56,51 L56,53 L52,53 Z" />
+
+    <!-- Free Tools Text & Graphic Label -->
+    <!-- "FREE" 3D white text block -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M40,68 L40,44 L47,58 L54,44 L54,68 L50,68 L50,52 L45,62 L42,62 L37,52 L37,68 Z" />
-    <!-- Gear accent dot -->
+        android:pathData="M26,60 h6 v2 h-4 v2 h3 v2 h-3 v4 h-2 z M34,60 h6 c1,0 2,1 2,2 c0,1 -1,2 -2,2 l2,4 h-2 l-2,-4 h-2 v4 h-2 z M36,62 h3 v2 h-3 z M44,60 h6 v2 h-4 v2 h3 v2 h-3 v2 h4 v2 h-6 z M52,60 h6 v2 h-4 v2 h3 v2 h-3 v2 h4 v2 h-6 z" />
+
+    <!-- "TOOLS" purple/magenta text block -->
     <path
-        android:fillColor="#38BDF8"
-        android:pathData="M64,50 A6,6 0 1,0 64,62 A6,6 0 1,0 64,50 Z" />
+        android:fillColor="#F472B6"
+        android:pathData="M60,60 h8 v2 h-3 v8 h-2 v-8 h-3 z M70,60 h6 c1,0 2,1 2,2 v4 c0,1 -1,2 -2,2 h-6 c-1,0 -2,-1 -2,-2 v-4 c0,-1 1,-2 2,-2 z M72,62 h2 v4 h-2 z M80,60 h2 v8 h-2 z M84,60 h2 v8 h-2 z" />
+
+    <!-- "OFFLINE ALL-IN-ONE UTILITY TOOLS" Green Badge -->
+    <path
+        android:fillColor="#15803D"
+        android:pathData="M28,73 L80,73 C82,73 83,74 83,75 L83,78 C83,79 82,80 80,80 L28,80 C26,80 25,79 25,78 L25,75 C25,74 26,73 28,73 Z" />
+    <!-- "OFFLINE" Green Text -->
+    <path
+        android:fillColor="#4ADE80"
+        android:pathData="M27,75 h3 v1 h-2 v1 h2 v2 h-3 z M31,75 h3 v1 h-2 v1 h2 v1 h-2 v1 h-1 z M35,75 h3 v1 h-2 v1 h2 v1 h-2 v1 h-1 z M39,75 h1 v4 h-1 z M41,75 h3 v1 h-2 v1 h2 v2 h-3 z M45,75 h1 v4 h-1 z" />
+    <!-- White Subtext -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,75 h3 v1 h-1 v3 h-1 v-3 h-1 z M52,75 h3 v1 h-2 v1 h2 v2 h-3 z M56,75 h1 v3 h2 v1 h-3 z M60,75 h1 v3 h2 v1 h-3 z M64,75 h1 v4 h-1 z M66,75 h3 v1 h-1 v3 h-1 v-3 h-1 z M70,75 L71,77 L72,75 h1 L71,79 h-1 L69,75 z" />
+
+    <!-- Bottom Icon Row (Micro symbols for PDF, QR, Image, Video) -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M28,82 h4 v4 h-4 z M30,83 h1 v2 h-1 z" />
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M42,82 h4 v4 h-4 z M43,83 h2 v1 h-2 z M44,84 h1 v1 h-1 z" />
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M56,82 h4 v4 h-4 z M57,85 L58,83 L59,85 z" />
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M70,82 h4 v4 h-4 z M71,83 L73,84 L71,85 z" />
+
 </vector>
