@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -175,11 +176,17 @@ fun HomeScreen(
             }
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
+            contentAlignment = Alignment.TopCenter
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = 840.dp)
+            ) {
             // Header: App Title & Subtitle
             Column(
                 modifier = Modifier
@@ -412,6 +419,7 @@ fun HomeScreen(
         }
     }
 }
+}
 
 @Composable
 fun ToolCardItem(
@@ -469,7 +477,7 @@ fun ToolCardItem(
                     ) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                            contentDescription = "Favorite",
+                            contentDescription = if (isFavorite) "Remove ${tool.title} from favorites" else "Add ${tool.title} to favorites",
                             tint = if (isFavorite) tool.accentColor else TextMuted,
                             modifier = Modifier.size(18.dp)
                         )

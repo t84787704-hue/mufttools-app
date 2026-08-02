@@ -27,18 +27,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -148,11 +149,17 @@ fun QrScannerScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         containerColor = DarkBackground
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
+            contentAlignment = Alignment.TopCenter
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .widthIn(max = 680.dp)
+            ) {
             TabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = DarkSurface,
@@ -185,6 +192,7 @@ fun QrScannerScreen(
             }
         }
     }
+}
 }
 
 @Composable
@@ -346,7 +354,7 @@ private fun ScanQrTab(
                                 modifier = Modifier.weight(1f),
                                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldTertiary)
                             ) {
-                                Icon(imageVector = Icons.Default.OpenInNew, contentDescription = null, tint = DarkBackground)
+                                Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = DarkBackground)
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Open Link", color = DarkBackground, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }

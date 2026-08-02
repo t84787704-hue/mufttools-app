@@ -43,7 +43,7 @@ private val MuftToolsDarkColorScheme = darkColorScheme(
 
 @Composable
 fun MuftToolsTheme(
-    darkTheme: Boolean = true, // Default to Material 3 Dark theme as requested
+    darkTheme: Boolean = true, // Default to Material 3 Dark theme
     content: @Composable () -> Unit
 ) {
     val colorScheme = MuftToolsDarkColorScheme
@@ -54,7 +54,9 @@ fun MuftToolsTheme(
                 val activity = view.context.findActivity()
                 if (activity != null) {
                     val window = activity.window
+                    @Suppress("DEPRECATION")
                     window.statusBarColor = DarkBackground.toArgb()
+                    @Suppress("DEPRECATION")
                     window.navigationBarColor = DarkBackground.toArgb()
                     WindowCompat.getInsetsController(window, view).apply {
                         isAppearanceLightStatusBars = false
