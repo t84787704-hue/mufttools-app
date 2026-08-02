@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -191,7 +192,7 @@ fun HomeScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 6.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -201,7 +202,7 @@ fun HomeScreen(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(42.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(
                                     Brush.linearGradient(
@@ -226,6 +227,7 @@ fun HomeScreen(
                                     text = "Free Tools",
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 22.sp,
                                     color = TextPrimary
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -237,6 +239,7 @@ fun HomeScreen(
                                         text = "OFFLINE",
                                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                         style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 9.sp,
                                         fontWeight = FontWeight.Black,
                                         color = EmeraldTertiary
                                     )
@@ -245,42 +248,50 @@ fun HomeScreen(
                             Text(
                                 text = "All-in-One Offline Utility Tools",
                                 style = MaterialTheme.typography.labelMedium,
+                                fontSize = 12.sp,
                                 color = TextSecondary
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Search Bar
+                // Search Bar (Sleek height)
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { viewModel.onSearchQueryChanged(it) },
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(50.dp)
                         .testTag("search_bar_input"),
                     placeholder = {
                         Text(
                             text = "Search PDF Scanner, BG Eraser, QR, Video...",
                             color = TextMuted,
-                            style = MaterialTheme.typography.bodyMedium
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontSize = 13.sp
                         )
                     },
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.Search,
                             contentDescription = "Search",
-                            tint = CyanPrimary
+                            tint = CyanPrimary,
+                            modifier = Modifier.size(20.dp)
                         )
                     },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.onSearchQueryChanged("") }) {
+                            IconButton(
+                                onClick = { viewModel.onSearchQueryChanged("") },
+                                modifier = Modifier.size(28.dp)
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.Clear,
                                     contentDescription = "Clear search",
-                                    tint = TextSecondary
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
@@ -297,9 +308,9 @@ fun HomeScreen(
                     singleLine = true
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Category Chips Horizontal Scroll
+                // Category Chips Horizontal Scroll (Equal height 36.dp)
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     contentPadding = PaddingValues(end = 16.dp)
@@ -308,6 +319,7 @@ fun HomeScreen(
                         val isSelected = selectedCategory.equals(category, ignoreCase = true)
                         Surface(
                             modifier = Modifier
+                                .height(36.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable {
                                     viewModel.onCategorySelected(category)
@@ -321,13 +333,20 @@ fun HomeScreen(
                             color = if (isSelected) CyanPrimary else DarkSurface,
                             border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, DarkSurfaceVariant)
                         ) {
-                            Text(
-                                text = category,
-                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) DarkBackground else TextPrimary
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(horizontal = 14.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = category,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isSelected) DarkBackground else TextPrimary,
+                                    fontSize = 13.sp
+                                )
+                            }
                         }
                     }
                 }
@@ -339,7 +358,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .weight(1f)
                     .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp),
+                contentPadding = PaddingValues(top = 6.dp, bottom = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(14.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
@@ -348,7 +367,7 @@ fun HomeScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp),
+                            .padding(vertical = 2.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -431,6 +450,7 @@ fun ToolCardItem(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .height(215.dp)
             .testTag("tool_card_${tool.id}")
             .border(
                 1.dp,
@@ -445,7 +465,7 @@ fun ToolCardItem(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -458,15 +478,15 @@ fun ToolCardItem(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
-                            .clip(RoundedCornerShape(14.dp))
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
                             .background(tool.accentColor.copy(alpha = 0.15f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = tool.icon,
                             contentDescription = tool.title,
-                            modifier = Modifier.size(26.dp),
+                            modifier = Modifier.size(24.dp),
                             tint = tool.accentColor
                         )
                     }
@@ -484,12 +504,13 @@ fun ToolCardItem(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
-                // Badge & Status Text
+                // Badge & Status Text Row - SpaceBetween ensures clear separation without clipping
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Surface(
                         shape = CircleShape,
@@ -497,11 +518,13 @@ fun ToolCardItem(
                     ) {
                         Text(
                             text = tool.badge,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp),
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 10.sp,
                             color = tool.accentColor,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -509,7 +532,10 @@ fun ToolCardItem(
                         text = tool.statusText,
                         style = MaterialTheme.typography.labelSmall,
                         color = TextMuted,
-                        fontSize = 10.sp
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
 
@@ -520,6 +546,7 @@ fun ToolCardItem(
                     text = tool.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
                     color = TextPrimary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -532,15 +559,14 @@ fun ToolCardItem(
                     text = tool.shortDescription,
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary,
+                    fontSize = 11.5.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    lineHeight = 16.sp
+                    lineHeight = 15.sp
                 )
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Action Row: Arrow button
+            // Bottom Action Row: Arrow button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
