@@ -80,10 +80,8 @@ import com.example.ui.theme.EmeraldTertiary
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
+import com.example.util.AiBackgroundRemover
 import com.example.util.FileUtil
-import com.google.mlkit.vision.common.InputImage
-import com.google.mlkit.vision.segmentation.Segmentation
-import com.google.mlkit.vision.segmentation.selfie.SelfieSegmenterOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -157,59 +155,27 @@ fun BgRemoverScreen(
 
     fun removeBackground(bitmap: Bitmap) {
         isProcessing = true
-        val options = SelfieSegmenterOptions.Builder()
-            .setDetectorMode(SelfieSegmenterOptions.SINGLE_IMAGE_MODE)
-            .build()
-        val segmenter = Segmentation.getClient(options)
-        val inputImage = InputImage.fromBitmap(bitmap, 0)
-
-        segmenter.process(inputImage)
-            .addOnSuccessListener { segmentationMask ->
-                scope.launch(Dispatchers.IO) {
-                    val width = segmentationMask.width
-                    val height = segmentationMask.height
-                    val maskBuffer: ByteBuffer = segmentationMask.buffer
-
-                    val outputBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                    val maskWidth = segmentationMask.width
-                    val maskHeight = segmentationMask.height
-
-                    val bgIntColor = when (selectedBgIndex) {
-                        1 -> AndroidColor.WHITE
-                        2 -> AndroidColor.DKGRAY
-                        3 -> AndroidColor.rgb(30, 144, 255)
-                        else -> AndroidColor.TRANSPARENT
-                    }
-
-                    val pixels = IntArray(width * height)
-                    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
-
-                    maskBuffer.rewind()
-                    for (y in 0 until height) {
-                        for (x in 0 until width) {
-                            val bgConfidence = maskBuffer.float
-                            val index = y * width + x
-                            if (bgConfidence < confidenceThreshold) {
-                                pixels[index] = bgIntColor
-                            }
-                        }
-                    }
-
-                    outputBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
-
-                    withContext(Dispatchers.Main) {
-                        processedBitmap = outputBitmap
-                        isProcessing = false
-                        snackbarHostState.showSnackbar("Background removed successfully!")
-                    }
+        scope.launch(Dispatchers.IO) {
+            try {
+                val output = AiBackgroundRemover.removeBackground(
+                    context = context,
+                    bitmap = bitmap,
+                    threshold = confidenceThreshold,
+                    bgStyleIndex = selectedBgIndex
+                )
+                withContext(Dispatchers.Main) {
+                    processedBitmap = output
+                    isProcessing = false
+                    snackbarHostState.showSnackbar("Background removed successfully!")
                 }
-            }
-            .addOnFailureListener { e ->
-                isProcessing = false
-                scope.launch {
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    isProcessing = false
                     snackbarHostState.showSnackbar("Failed to remove background: ${e.message}")
                 }
             }
+        }
     }
 
     Scaffold(
