@@ -3,6 +3,7 @@ package com.example.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color as AndroidColor
+import android.util.Log
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.segmentation.Segmentation
 import com.google.mlkit.vision.segmentation.selfie.SelfieSegmenterOptions
@@ -17,10 +18,30 @@ import java.nio.channels.FileChannel
 import kotlin.coroutines.resume
 import kotlin.math.min
 
+data class RuntimeVerification(
+    val modelExistsInAssets: Boolean,
+    val modelFileName: String,
+    val loadedModelName: String,
+    val inputTensorShape: String,
+    val outputTensorShape: String,
+    val usedFallback: Boolean,
+    val loadErrorReason: String? = null,
+    val logs: List<String> = emptyList()
+)
+
+data class SegmentationResult(
+    val bitmap: Bitmap,
+    val verification: RuntimeVerification
+)
+
 object AiBackgroundRemover {
+
+    private const val TAG = "AiBackgroundRemover"
+    private const val PRIMARY_MODEL = "isnet_birefnet.tflite"
 
     private var tfliteInterpreter: Interpreter? = null
     private var interpreterModelPath: String? = null
+    private var lastLoadError: String? = null
 
     private fun loadModelFile(context: Context, modelName: String): ByteBuffer? {
         return try {
@@ -31,50 +52,120 @@ object AiBackgroundRemover {
             val declaredLength = fileDescriptor.declaredLength
             fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
         } catch (e: Exception) {
-            e.printStackTrace()
+            val err = "Failed to load $modelName from assets: ${e.localizedMessage}"
+            Log.e(TAG, err, e)
+            lastLoadError = err
             null
         }
     }
 
+    private fun checkAssetExists(context: Context, name: String): Boolean {
+        return try {
+            context.assets.open(name).use { true }
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     @Synchronized
-    private fun getInterpreter(context: Context): Interpreter? {
+    private fun getInterpreter(context: Context, logs: MutableList<String>): Interpreter? {
+        val primaryExists = checkAssetExists(context, PRIMARY_MODEL)
+        logs.add("Checking asset existence: $PRIMARY_MODEL -> exists=$primaryExists")
+        Log.i(TAG, "Asset existence check: $PRIMARY_MODEL exists=$primaryExists")
+
         val modelToUse = when {
-            hasAsset(context, "isnet_birefnet.tflite") -> "isnet_birefnet.tflite"
-            hasAsset(context, "deeplab_v3.tflite") -> "deeplab_v3.tflite"
+            primaryExists -> PRIMARY_MODEL
+            checkAssetExists(context, "deeplab_v3.tflite") -> "deeplab_v3.tflite"
             else -> null
-        } ?: return null
+        }
+
+        if (modelToUse == null) {
+            val msg = "No TFLite segmentation model found in assets."
+            logs.add("ERROR: $msg")
+            Log.e(TAG, msg)
+            lastLoadError = msg
+            return null
+        }
 
         if (tfliteInterpreter != null && interpreterModelPath == modelToUse) {
+            logs.add("Reusing initialized interpreter for $modelToUse")
             return tfliteInterpreter
         }
 
         tfliteInterpreter?.close()
         tfliteInterpreter = null
 
-        val modelBuffer = loadModelFile(context, modelToUse) ?: return null
+        logs.add("Opening model file $modelToUse from assets...")
+        val modelBuffer = loadModelFile(context, modelToUse)
+        if (modelBuffer == null) {
+            val err = "Failed to create MappedByteBuffer for $modelToUse"
+            logs.add("ERROR: $err")
+            Log.e(TAG, err)
+            lastLoadError = err
+            return null
+        }
+
         val options = Interpreter.Options().apply {
             setNumThreads(Runtime.getRuntime().availableProcessors().coerceIn(2, 6))
             try {
                 setUseNNAPI(true)
-            } catch (ignored: Exception) {}
+            } catch (e: Exception) {
+                logs.add("NNAPI delegate unavailable, falling back to CPU threads")
+            }
         }
 
         return try {
             Interpreter(modelBuffer, options).also {
                 tfliteInterpreter = it
                 interpreterModelPath = modelToUse
+                logs.add("TensorFlow Lite Interpreter created successfully for $modelToUse")
+                Log.i(TAG, "TFLite Interpreter initialized successfully for $modelToUse")
+                lastLoadError = null
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            val err = "Interpreter initialization failed for $modelToUse: ${e.localizedMessage}"
+            logs.add("ERROR: $err")
+            Log.e(TAG, err, e)
+            lastLoadError = err
             null
         }
     }
 
-    private fun hasAsset(context: Context, name: String): Boolean {
-        return try {
-            context.assets.open(name).use { true }
-        } catch (e: Exception) {
-            false
+    fun verifyRuntimeState(context: Context): RuntimeVerification {
+        val logs = mutableListOf<String>()
+        val primaryExists = checkAssetExists(context, PRIMARY_MODEL)
+        logs.add("Asset verification: $PRIMARY_MODEL exists=$primaryExists")
+
+        val interpreter = getInterpreter(context, logs)
+        if (interpreter != null) {
+            val inputShape = interpreter.getInputTensor(0).shape().contentToString()
+            val outputShape = interpreter.getOutputTensor(0).shape().contentToString()
+            logs.add("Input Tensor Shape: $inputShape")
+            logs.add("Output Tensor Shape: $outputShape")
+            logs.add("Active Engine: TFLite ($interpreterModelPath)")
+
+            return RuntimeVerification(
+                modelExistsInAssets = primaryExists,
+                modelFileName = PRIMARY_MODEL,
+                loadedModelName = interpreterModelPath ?: "Unknown",
+                inputTensorShape = inputShape,
+                outputTensorShape = outputShape,
+                usedFallback = false,
+                loadErrorReason = null,
+                logs = logs
+            )
+        } else {
+            logs.add("Primary TFLite engine initialization failed. ML Kit Selfie Segmenter fallback will be used.")
+            return RuntimeVerification(
+                modelExistsInAssets = primaryExists,
+                modelFileName = PRIMARY_MODEL,
+                loadedModelName = "ML Kit Selfie Segmenter (Fallback)",
+                inputTensorShape = "Dynamic Bitmap",
+                outputTensorShape = "Dynamic Float Mask",
+                usedFallback = true,
+                loadErrorReason = lastLoadError ?: "Failed to initialize TFLite interpreter",
+                logs = logs
+            )
         }
     }
 
@@ -83,29 +174,88 @@ object AiBackgroundRemover {
         bitmap: Bitmap,
         threshold: Float,
         bgStyleIndex: Int
-    ): Bitmap = withContext(Dispatchers.IO) {
-        val interpreter = getInterpreter(context)
+    ): SegmentationResult = withContext(Dispatchers.IO) {
+        val logs = mutableListOf<String>()
+        val primaryExists = checkAssetExists(context, PRIMARY_MODEL)
+        logs.add("Starting background removal run...")
+        logs.add("Primary asset $PRIMARY_MODEL present in APK: $primaryExists")
+
+        val interpreter = getInterpreter(context, logs)
+
         if (interpreter != null) {
             try {
-                return@withContext runTfliteSegmentation(interpreter, bitmap, threshold, bgStyleIndex)
+                val inputShape = interpreter.getInputTensor(0).shape()
+                val outputShape = interpreter.getOutputTensor(0).shape()
+                val inputShapeStr = inputShape.contentToString()
+                val outputShapeStr = outputShape.contentToString()
+
+                logs.add("Loaded model name: $interpreterModelPath")
+                logs.add("Input tensor shape: $inputShapeStr")
+                logs.add("Output tensor shape: $outputShapeStr")
+                logs.add("Executing TFLite inference...")
+
+                Log.i(TAG, "Executing inference with model: $interpreterModelPath | input=$inputShapeStr | output=$outputShapeStr")
+
+                val outputBmp = runTfliteSegmentation(
+                    interpreter = interpreter,
+                    originalBitmap = bitmap,
+                    threshold = threshold,
+                    bgStyleIndex = bgStyleIndex,
+                    inputShape = inputShape,
+                    outputShape = outputShape
+                )
+
+                logs.add("Inference completed successfully without fallback!")
+                Log.i(TAG, "Inference completed successfully with TFLite model $interpreterModelPath")
+
+                val verification = RuntimeVerification(
+                    modelExistsInAssets = primaryExists,
+                    modelFileName = PRIMARY_MODEL,
+                    loadedModelName = interpreterModelPath ?: "TFLite Model",
+                    inputTensorShape = inputShapeStr,
+                    outputTensorShape = outputShapeStr,
+                    usedFallback = false,
+                    loadErrorReason = null,
+                    logs = logs
+                )
+
+                return@withContext SegmentationResult(outputBmp, verification)
             } catch (e: Exception) {
-                e.printStackTrace()
+                val err = "TFLite inference error: ${e.localizedMessage}"
+                logs.add("ERROR: $err")
+                Log.e(TAG, err, e)
+                lastLoadError = err
             }
         }
 
-        // Fallback to ML Kit Selfie Segmenter
-        return@withContext runMlKitSegmentation(bitmap, threshold, bgStyleIndex)
+        logs.add("Falling back to ML Kit Selfie Segmenter...")
+        Log.w(TAG, "Falling back to ML Kit Selfie Segmenter due to TFLite error or unavailability.")
+
+        val fallbackBmp = runMlKitSegmentation(bitmap, threshold, bgStyleIndex)
+        logs.add("ML Kit inference completed.")
+
+        val verification = RuntimeVerification(
+            modelExistsInAssets = primaryExists,
+            modelFileName = PRIMARY_MODEL,
+            loadedModelName = "ML Kit Selfie Segmenter (Fallback)",
+            inputTensorShape = "[${bitmap.width}, ${bitmap.height}, 4]",
+            outputTensorShape = "[${bitmap.width}, ${bitmap.height}]",
+            usedFallback = true,
+            loadErrorReason = lastLoadError ?: "TFLite unavailable",
+            logs = logs
+        )
+
+        return@withContext SegmentationResult(fallbackBmp, verification)
     }
 
     private fun runTfliteSegmentation(
         interpreter: Interpreter,
         originalBitmap: Bitmap,
         threshold: Float,
-        bgStyleIndex: Int
+        bgStyleIndex: Int,
+        inputShape: IntArray,
+        outputShape: IntArray
     ): Bitmap {
-        val inputShape = interpreter.getInputTensor(0).shape()
-        val outputShape = interpreter.getOutputTensor(0).shape()
-
         var modelWidth = 512
         var modelHeight = 512
         var isNCHW = false
@@ -159,7 +309,7 @@ object AiBackgroundRemover {
 
         inputBuffer.rewind()
 
-        // Allocate flat output float array
+        // Allocate output buffer
         val totalOutputElements = outputShape.fold(1) { acc, dim -> acc * if (dim > 0) dim else 1 }
         val outputBuffer = ByteBuffer.allocateDirect(totalOutputElements * 4).apply {
             order(ByteOrder.nativeOrder())

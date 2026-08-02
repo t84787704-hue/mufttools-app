@@ -29,14 +29,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Transform
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,6 +50,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -53,9 +58,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -69,6 +76,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,11 +90,10 @@ import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.util.AiBackgroundRemover
 import com.example.util.FileUtil
+import com.example.util.RuntimeVerification
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.InputStream
-import java.nio.ByteBuffer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,6 +115,18 @@ fun BgRemoverScreen(
     var savedUri by remember { mutableStateOf<Uri?>(null) }
 
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    var verificationState by remember { mutableStateOf<RuntimeVerification?>(null) }
+    var showLogsDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        scope.launch(Dispatchers.IO) {
+            val verification = AiBackgroundRemover.verifyRuntimeState(context)
+            withContext(Dispatchers.Main) {
+                verificationState = verification
+            }
+        }
+    }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
@@ -157,16 +176,17 @@ fun BgRemoverScreen(
         isProcessing = true
         scope.launch(Dispatchers.IO) {
             try {
-                val output = AiBackgroundRemover.removeBackground(
+                val result = AiBackgroundRemover.removeBackground(
                     context = context,
                     bitmap = bitmap,
                     threshold = confidenceThreshold,
                     bgStyleIndex = selectedBgIndex
                 )
                 withContext(Dispatchers.Main) {
-                    processedBitmap = output
+                    processedBitmap = result.bitmap
+                    verificationState = result.verification
                     isProcessing = false
-                    snackbarHostState.showSnackbar("Background removed successfully!")
+                    snackbarHostState.showSnackbar("Processed with ${result.verification.loadedModelName}")
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -227,153 +247,260 @@ fun BgRemoverScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Button(
-                    onClick = { galleryLauncher.launch("image/*") },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
-                ) {
-                    Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null, tint = DarkBackground)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Gallery", color = DarkBackground, fontWeight = FontWeight.Bold)
-                }
-
-                Button(
-                    onClick = {
-                        val uri = FileUtil.createTempImageUri(context)
-                        tempCameraUri = uri
-                        cameraLauncher.launch(uri)
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
-                ) {
-                    Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = TextPrimary)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Take Photo", color = TextPrimary, fontWeight = FontWeight.Bold)
-                }
-            }
-
-            originalBitmap?.let { origBmp ->
-                Text("Image Preview", fontWeight = FontWeight.Bold, color = TextPrimary)
-
+                // Runtime Verification Status Card
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(280.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = DarkSurface)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Image(
-                            bitmap = (processedBitmap ?: origBmp).asImageBitmap(),
-                            contentDescription = "Preview Image",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-
-                Text("Background Style", style = MaterialTheme.typography.titleSmall, color = TextPrimary, fontWeight = FontWeight.Bold)
-                Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.3f))
                 ) {
-                    val bgOptions = listOf("Transparent", "White", "Dark Gray", "Blue")
-                    bgOptions.forEachIndexed { idx, label ->
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable {
-                                    selectedBgIndex = idx
-                                    if (processedBitmap != null) {
-                                        removeBackground(origBmp)
-                                    }
-                                },
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (selectedBgIndex == idx) CyanPrimary else DarkSurfaceVariant
+                    Column(
+                        modifier = Modifier.padding(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Box(modifier = Modifier.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Memory,
+                                    contentDescription = null,
+                                    tint = CyanPrimary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = label,
-                                    fontSize = 11.sp,
+                                    text = "Runtime ML Engine Verification",
                                     fontWeight = FontWeight.Bold,
-                                    color = if (selectedBgIndex == idx) DarkBackground else TextPrimary
+                                    fontSize = 14.sp,
+                                    color = TextPrimary
+                                )
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (verificationState?.usedFallback == false) EmeraldTertiary.copy(alpha = 0.2f) else Color(0xFFFFB74D).copy(alpha = 0.2f)
+                            ) {
+                                Text(
+                                    text = if (verificationState?.usedFallback == false) "BiRefNet Active" else "Fallback Active",
+                                    color = if (verificationState?.usedFallback == false) EmeraldTertiary else Color(0xFFFFB74D),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
                         }
-                    }
-                }
 
-                Text("Mask Cutout Threshold (${(confidenceThreshold * 100).toInt()}%)", fontSize = 12.sp, color = TextSecondary)
-                Slider(
-                    value = confidenceThreshold,
-                    onValueChange = { confidenceThreshold = it },
-                    valueRange = 0.1f..0.9f,
-                    colors = SliderDefaults.colors(
-                        thumbColor = CyanPrimary,
-                        activeTrackColor = CyanPrimary,
-                        inactiveTrackColor = DarkSurfaceVariant
-                    )
-                )
-
-                Button(
-                    onClick = { removeBackground(origBmp) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !isProcessing,
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
-                ) {
-                    if (isProcessing) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = DarkBackground)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Processing On-Device ML...", color = DarkBackground)
-                    } else {
-                        Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = DarkBackground)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Remove Background Now", color = DarkBackground, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                processedBitmap?.let { pBmp ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                val uri = FileUtil.saveBitmapToGallery(context, pBmp, "BG_Removed_${System.currentTimeMillis()}")
-                                savedUri = uri
-                                if (uri != null) {
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Saved transparent PNG to Pictures/MuftTools!")
-                                    }
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldTertiary)
-                        ) {
-                            Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = DarkBackground)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Save PNG", color = DarkBackground, fontWeight = FontWeight.Bold)
+                        val info = verificationState
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("• APK Assets Model File: isnet_birefnet.tflite (${if (info?.modelExistsInAssets == true) "VERIFIED PRESENT" else "MISSING"})", fontSize = 11.sp, color = TextSecondary)
+                            Text("• Loaded Engine / Model: ${info?.loadedModelName ?: "Initializing..."}", fontSize = 11.sp, color = TextSecondary)
+                            Text("• Input Tensor Shape: ${info?.inputTensorShape ?: "N/A"}", fontSize = 11.sp, color = TextSecondary)
+                            Text("• Output Tensor Shape: ${info?.outputTensorShape ?: "N/A"}", fontSize = 11.sp, color = TextSecondary)
+                            Text("• Fallback Used: ${if (info?.usedFallback == true) "YES (ML Kit)" else "NO (Primary TFLite Executed)"}", fontSize = 11.sp, color = TextSecondary)
+                            if (info?.loadErrorReason != null) {
+                                Text("• Load Error Reason: ${info.loadErrorReason}", fontSize = 11.sp, color = Color(0xFFFF5252))
+                            }
                         }
 
-                        Button(
-                            onClick = {
-                                val uri = savedUri ?: FileUtil.saveBitmapToGallery(context, pBmp, "BG_Removed_Share")
-                                uri?.let { FileUtil.shareFile(context, it, "image/png") }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
+                        OutlinedButton(
+                            onClick = { showLogsDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp)
                         ) {
-                            Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = TextPrimary)
+                            Icon(imageVector = Icons.Default.BugReport, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Share", color = TextPrimary, fontWeight = FontWeight.Bold)
+                            Text("View Detailed Runtime Diagnostic Logs", fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { galleryLauncher.launch("image/*") },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
+                    ) {
+                        Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null, tint = DarkBackground)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Gallery", color = DarkBackground, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            val uri = FileUtil.createTempImageUri(context)
+                            tempCameraUri = uri
+                            cameraLauncher.launch(uri)
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
+                    ) {
+                        Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = TextPrimary)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Take Photo", color = TextPrimary, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                originalBitmap?.let { origBmp ->
+                    Text("Image Preview", fontWeight = FontWeight.Bold, color = TextPrimary)
+
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(280.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                    ) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Image(
+                                bitmap = (processedBitmap ?: origBmp).asImageBitmap(),
+                                contentDescription = "Preview Image",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+
+                    Text("Background Style", style = MaterialTheme.typography.titleSmall, color = TextPrimary, fontWeight = FontWeight.Bold)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val bgOptions = listOf("Transparent", "White", "Dark Gray", "Blue")
+                        bgOptions.forEachIndexed { idx, label ->
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable {
+                                        selectedBgIndex = idx
+                                        if (processedBitmap != null) {
+                                            removeBackground(origBmp)
+                                        }
+                                    },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (selectedBgIndex == idx) CyanPrimary else DarkSurfaceVariant
+                            ) {
+                                Box(modifier = Modifier.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = label,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (selectedBgIndex == idx) DarkBackground else TextPrimary
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Text("Mask Cutout Threshold (${(confidenceThreshold * 100).toInt()}%)", fontSize = 12.sp, color = TextSecondary)
+                    Slider(
+                        value = confidenceThreshold,
+                        onValueChange = { confidenceThreshold = it },
+                        valueRange = 0.1f..0.9f,
+                        colors = SliderDefaults.colors(
+                            thumbColor = CyanPrimary,
+                            activeTrackColor = CyanPrimary,
+                            inactiveTrackColor = DarkSurfaceVariant
+                        )
+                    )
+
+                    Button(
+                        onClick = { removeBackground(origBmp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isProcessing,
+                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
+                    ) {
+                        if (isProcessing) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = DarkBackground)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Processing On-Device ML...", color = DarkBackground)
+                        } else {
+                            Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = DarkBackground)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Remove Background Now", color = DarkBackground, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    processedBitmap?.let { pBmp ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    val uri = FileUtil.saveBitmapToGallery(context, pBmp, "BG_Removed_${System.currentTimeMillis()}")
+                                    savedUri = uri
+                                    if (uri != null) {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Saved transparent PNG to Pictures/MuftTools!")
+                                        }
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldTertiary)
+                            ) {
+                                Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = DarkBackground)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Save PNG", color = DarkBackground, fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = {
+                                    val uri = savedUri ?: FileUtil.saveBitmapToGallery(context, pBmp, "BG_Removed_Share")
+                                    uri?.let { FileUtil.shareFile(context, it, "image/png") }
+                                },
+                                modifier = Modifier.weight(1f),
+                                colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
+                            ) {
+                                Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = TextPrimary)
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Share", color = TextPrimary, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
             }
         }
     }
-}
+
+    if (showLogsDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogsDialog = false },
+            title = {
+                Text("Runtime Engine Diagnostic Logs", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            },
+            text = {
+                val logsList = verificationState?.logs ?: emptyList()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(300.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (logsList.isEmpty()) {
+                        Text("No logs captured yet.", fontSize = 12.sp, color = TextMuted)
+                    } else {
+                        logsList.forEach { logLine ->
+                            Text(
+                                text = logLine,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace,
+                                color = if (logLine.contains("ERROR")) Color(0xFFFF5252) else TextSecondary
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showLogsDialog = false }) {
+                    Text("Close", color = CyanPrimary)
+                }
+            },
+            containerColor = DarkSurface
+        )
+    }
 }
