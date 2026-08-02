@@ -37,6 +37,7 @@ android {
       storePassword = "mufttools123"
       keyAlias = "mufttools"
       keyPassword = "mufttools123"
+      storeType = "PKCS12"
     }
   }
 
