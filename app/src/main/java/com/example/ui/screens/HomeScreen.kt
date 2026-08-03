@@ -1,9 +1,12 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -203,24 +206,14 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
+                        Image(
+                            painter = painterResource(id = R.drawable.app_icon_master),
+                            contentDescription = "Free Tools Logo",
                             modifier = Modifier
-                                .size(42.dp)
+                                .size(46.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    Brush.linearGradient(
-                                        listOf(CyanPrimary, VioletSecondary)
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Build,
-                                contentDescription = "Free Tools Logo",
-                                modifier = Modifier.size(24.dp),
-                                tint = Color.White
-                            )
-                        }
+                                .border(1.dp, VioletSecondary.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        )
 
                         Spacer(modifier = Modifier.width(12.dp))
 
@@ -259,6 +252,64 @@ fun HomeScreen(
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
+
+                // App Launcher Icon Showcase Banner
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = DarkSurface),
+                    border = BorderStroke(1.dp, VioletSecondary.copy(alpha = 0.35f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.app_icon_master),
+                            contentDescription = "App Icon Showcase",
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .border(1.5.dp, VioletSecondary.copy(alpha = 0.7f), RoundedCornerShape(14.dp))
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = VioletSecondary.copy(alpha = 0.25f)
+                                ) {
+                                    Text(
+                                        text = "APP LAUNCHER ICON APPLIED",
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = VioletSecondary
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = "1024x1024 All-In-One Toolbox Icon",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                                fontSize = 13.5.sp
+                            )
+                            Text(
+                                text = "Active on Home Screen, App Drawer & App Header",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = TextMuted,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
 
                 // Search Bar (Custom container guaranteeing vertical text centering with zero clipping)
                 Surface(

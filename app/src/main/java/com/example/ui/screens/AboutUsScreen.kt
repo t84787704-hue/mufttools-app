@@ -1,7 +1,10 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -92,22 +95,14 @@ fun AboutUsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.app_icon_master),
+                contentDescription = "Logo",
                 modifier = Modifier
-                    .size(80.dp)
+                    .size(96.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .background(
-                        Brush.linearGradient(listOf(CyanPrimary, VioletSecondary))
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Build,
-                    contentDescription = "Logo",
-                    modifier = Modifier.size(44.dp),
-                    tint = Color.White
-                )
-            }
+                    .border(2.dp, VioletSecondary, RoundedCornerShape(24.dp))
+            )
 
             Text(
                 text = "Free Tools - All-in-One Offline Utility Tools",
