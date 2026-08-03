@@ -95,14 +95,22 @@ fun AboutUsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.app_icon_master),
-                contentDescription = "Logo",
+            Box(
                 modifier = Modifier
-                    .size(96.dp)
+                    .size(80.dp)
                     .clip(RoundedCornerShape(24.dp))
-                    .border(2.dp, VioletSecondary, RoundedCornerShape(24.dp))
-            )
+                    .background(
+                        Brush.linearGradient(listOf(CyanPrimary, VioletSecondary))
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Build,
+                    contentDescription = "Logo",
+                    modifier = Modifier.size(44.dp),
+                    tint = Color.White
+                )
+            }
 
             Text(
                 text = "Free Tools - All-in-One Offline Utility Tools",
