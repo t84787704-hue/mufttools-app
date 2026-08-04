@@ -217,12 +217,13 @@ fun HomeScreen(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Build,
-                                contentDescription = "Free Tools Logo",
-                                modifier = Modifier.size(24.dp),
-                                tint = Color.White
-                            )
+                            Image(
+  painter = painterResource(id = R.drawable.splash_logo),
+  contentDescription = "Free Tools Logo",
+  modifier = Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)),
+  contentScale = ContentScale.Crop
+)
+                            
                         }
 
                         Spacer(modifier = Modifier.width(12.dp))
