@@ -238,23 +238,10 @@ fun HomeScreen(
                                     fontSize = 22.sp,
                                     color = TextPrimary
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Surface(
-                                    shape = CircleShape,
-                                    color = EmeraldTertiary.copy(alpha = 0.2f)
-                                ) {
-                                    Text(
-                                        text = "OFFLINE",
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = EmeraldTertiary
-                                    )
-                                }
+                                
                             }
                             Text(
-                                text = "All-in-One Offline Utility Tools",
+                                text = "All-in-One Utility Tools",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontSize = 12.sp,
                                 color = TextSecondary
