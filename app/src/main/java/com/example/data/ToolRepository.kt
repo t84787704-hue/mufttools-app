@@ -1,8 +1,13 @@
 package com.example.data
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.ui.graphics.Color
+
 object ToolRepository {
 
     val defaultTools = listOf(
+
         ToolItem(
             id = "pdf_scanner",
             title = "PDF Scanner",
@@ -10,8 +15,8 @@ object ToolRepository {
             detailedDescription = "Offline PDF Scanner",
             category = "Document",
             badge = "PDF",
-            accentColor = androidx.compose.ui.graphics.Color(0xFF00BCD4),
-            icon = androidx.compose.material.icons.Icons.Default.PictureAsPdf,
+            accentColor = Color(0xFF00BCD4),
+            icon = Icons.Default.Build,
             route = "pdf_scanner",
             statusText = "Ready",
             features = listOf(
@@ -28,8 +33,8 @@ object ToolRepository {
             detailedDescription = "Offline QR Scanner",
             category = "Utility",
             badge = "QR",
-            accentColor = androidx.compose.ui.graphics.Color(0xFF4CAF50),
-            icon = androidx.compose.material.icons.Icons.Default.QrCodeScanner,
+            accentColor = Color(0xFF4CAF50),
+            icon = Icons.Default.Build,
             route = "qr_scanner",
             statusText = "Ready",
             features = listOf(
@@ -45,8 +50,8 @@ object ToolRepository {
             detailedDescription = "Offline Video Compressor",
             category = "Media",
             badge = "Video",
-            accentColor = androidx.compose.ui.graphics.Color(0xFFFF9800),
-            icon = androidx.compose.material.icons.Icons.Default.VideoLibrary,
+            accentColor = Color(0xFFFF9800),
+            icon = Icons.Default.Build,
             route = "video_compressor",
             statusText = "Ready",
             features = listOf(
@@ -61,8 +66,8 @@ object ToolRepository {
             detailedDescription = "Offline Image Tools",
             category = "Graphics",
             badge = "Image",
-            accentColor = androidx.compose.ui.graphics.Color(0xFFE91E63),
-            icon = androidx.compose.material.icons.Icons.Default.Crop,
+            accentColor = Color(0xFFE91E63),
+            icon = Icons.Default.Build,
             route = "image_tools",
             statusText = "Ready",
             features = listOf(
