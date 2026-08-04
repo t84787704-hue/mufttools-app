@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.layout.ContentScale
 import com.example.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -218,13 +217,12 @@ fun HomeScreen(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            Image(
-  painter = painterResource(id = R.drawable.splash_logo),
-  contentDescription = "Free Tools Logo",
-  modifier = Modifier.size(28.dp).clip(RoundedCornerShape(6.dp)),
-  contentScale = ContentScale.Crop
-)
-                            
+                            Icon(
+                                imageVector = Icons.Default.Build,
+                                contentDescription = "Free Tools Logo",
+                                modifier = Modifier.size(24.dp),
+                                tint = Color.White
+                            )
                         }
 
                         Spacer(modifier = Modifier.width(12.dp))
@@ -238,10 +236,23 @@ fun HomeScreen(
                                     fontSize = 22.sp,
                                     color = TextPrimary
                                 )
-                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = CircleShape,
+                                    color = EmeraldTertiary.copy(alpha = 0.2f)
+                                ) {
+                                    Text(
+                                        text = "OFFLINE",
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = EmeraldTertiary
+                                    )
+                                }
                             }
                             Text(
-                                text = "All-in-One Utility Tools",
+                                text = "All-in-One Offline Utility Tools",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontSize = 12.sp,
                                 color = TextSecondary
