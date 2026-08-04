@@ -4,10 +4,16 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [ScannedDocument::class],
+    entities = [
+        ScannedDocument::class,
+        PdfHistory::class
+    ],
     version = 1,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
+
     abstract fun scannedDocumentDao(): ScannedDocumentDao
+
+    abstract fun pdfHistoryDao(): PdfHistoryDao
 }
