@@ -1,4 +1,4 @@
-package com.example.ui.screens
+package com.example.ui.compnents
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
