@@ -1,29 +1,17 @@
 package com.example.ui.screens
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color as AndroidColor
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
-import android.media.MediaExtractor
-import android.media.MediaFormat
 import android.media.MediaMetadataRetriever
-import android.media.MediaMuxer
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import kotlin.OptIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,25 +36,19 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Compress
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PlayCircleFilled
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.SmartDisplay
 import androidx.compose.material.icons.filled.Smartphone
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.VideoFile
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -86,16 +68,15 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -114,18 +95,23 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
 import com.example.util.FileUtil
+import com.example.util.VideoTranscoder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
-import java.io.FileOutputStream
 
-// Theme Color Palette matching the exact screenshot aesthetics
+// Theme Color Palette matching the screenshot aesthetics
 private val OrangePrimary = Color(0xFFFF8C00) // Vibrant Orange
 private val OrangeAmber = Color(0xFFF59E0B)   // Warm Amber
 private val OrangeDarkBg = Color(0xFF0D0B18)  // Midnight Deep Dark
@@ -141,7 +127,7 @@ data class SampleVideoInfo(
     val gradientColors: List<Int>
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(UnstableApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun VideoCompressorScreen(
     isFavorite: Boolean,
@@ -152,7 +138,7 @@ fun VideoCompressorScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Sample video options for immediate user play & compression
+    // Preset sample video options
     val sampleVideos = remember {
         listOf(
             SampleVideoInfo("Nature_2026.mp4", "1920x1080", "00:45", 60.5, listOf(0xFF0F2027.toInt(), 0xFF203A43.toInt(), 0xFF2C5364.toInt())),
@@ -165,12 +151,12 @@ fun VideoCompressorScreen(
     var selectedSample by remember { mutableStateOf(sampleVideos.first()) }
     var isCustomUserVideo by remember { mutableStateOf(false) }
 
-    // Selected Video Details
+    // Active Source Video File
+    var currentVideoFile by remember { mutableStateOf<File?>(null) }
     var videoTitle by remember { mutableStateOf(selectedSample.title) }
     var videoResolution by remember { mutableStateOf(selectedSample.resolution) }
     var videoDuration by remember { mutableStateOf(selectedSample.duration) }
     var originalSizeMb by remember { mutableStateOf(selectedSample.sizeMb) }
-    var customFile by remember { mutableStateOf<File?>(null) }
     var videoThumbnailBitmap by remember { mutableStateOf<Bitmap?>(null) }
 
     // Compression Settings State
@@ -183,35 +169,58 @@ fun VideoCompressorScreen(
     var compressionStatusText by remember { mutableStateOf("Initializing compressor engine...") }
     var isCompressionDone by remember { mutableStateOf(false) }
 
-    // Compressed Results
+    // Compressed Results State
     var compressedTitle by remember { mutableStateOf("${videoTitle.removeSuffix(".mp4")}_Compressed.mp4") }
     var compressedSizeMb by remember { mutableStateOf(originalSizeMb * (1f - compressionRatioPercent / 100f)) }
     var savedVideoUri by remember { mutableStateOf<Uri?>(null) }
     var compressedFile by remember { mutableStateOf<File?>(null) }
 
-    // Video Player Dialog
+    // Inline Hero Player & Dialog Player State
+    var isHeroPlaying by remember { mutableStateOf(false) }
     var showPlayerDialog by remember { mutableStateOf(false) }
-    var playingVideoTitle by remember { mutableStateOf("") }
+    var playingFile by remember { mutableStateOf<File?>(null) }
+    var playingTitle by remember { mutableStateOf("") }
 
-    // Recalculate estimated size when slider or video changes
+    // Estimated Size calculation
     val estimatedSizeMb = remember(originalSizeMb, compressionRatioPercent) {
-        val reduced = originalSizeMb * (1f - (compressionRatioPercent / 100f) * 0.85f)
-        Math.max(0.5, reduced)
+        val reduced = originalSizeMb * (1f - (compressionRatioPercent / 100f) * 0.70f)
+        Math.max(0.3, reduced)
     }
     val savedPercentage = remember(originalSizeMb, estimatedSizeMb) {
         val pct = ((originalSizeMb - estimatedSizeMb) / originalSizeMb * 100).toInt()
         Math.max(1, pct)
     }
 
-    // Generate thumbnail whenever video source changes
-    LaunchedEffect(videoTitle, isCustomUserVideo) {
+    // Prepare real video file and metadata when sample or custom selection changes
+    LaunchedEffect(selectedSample, isCustomUserVideo) {
         withContext(Dispatchers.IO) {
-            if (isCustomUserVideo && customFile != null) {
+            if (!isCustomUserVideo) {
+                // Ensure sample file exists on disk
+                val realSampleFile = VideoTranscoder.ensureSampleVideoFile(
+                    context = context,
+                    sampleTitle = selectedSample.title,
+                    gradientColors = selectedSample.gradientColors
+                )
+                val details = VideoTranscoder.getVideoDetails(context, realSampleFile)
+
+                withContext(Dispatchers.Main) {
+                    currentVideoFile = realSampleFile
+                    videoTitle = selectedSample.title
+                    videoResolution = details.formattedResolution
+                    videoDuration = details.formattedDuration
+                    originalSizeMb = selectedSample.sizeMb
+                    compressedTitle = "${selectedSample.title.removeSuffix(".mp4")}_Compressed.mp4"
+                    isCompressionDone = false
+                    isHeroPlaying = false
+                }
+            }
+
+            // Extract thumbnail frame
+            currentVideoFile?.let { file ->
+                val retriever = MediaMetadataRetriever()
                 try {
-                    val retriever = MediaMetadataRetriever()
-                    retriever.setDataSource(customFile!!.absolutePath)
-                    val frame = retriever.frameAtTime
-                    retriever.release()
+                    retriever.setDataSource(file.absolutePath)
+                    val frame = retriever.getFrameAtTime(1000000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                     withContext(Dispatchers.Main) {
                         videoThumbnailBitmap = frame ?: createSampleThumbnail(selectedSample.gradientColors)
                     }
@@ -219,17 +228,17 @@ fun VideoCompressorScreen(
                     withContext(Dispatchers.Main) {
                         videoThumbnailBitmap = createSampleThumbnail(selectedSample.gradientColors)
                     }
+                } finally {
+                    try { retriever.release() } catch (_: Exception) {}
                 }
-            } else {
-                val sampleBmp = createSampleThumbnail(selectedSample.gradientColors)
-                withContext(Dispatchers.Main) {
-                    videoThumbnailBitmap = sampleBmp
-                }
+            } ?: run {
+                val bmp = createSampleThumbnail(selectedSample.gradientColors)
+                withContext(Dispatchers.Main) { videoThumbnailBitmap = bmp }
             }
         }
     }
 
-    // Launcher for picking local videos
+    // Launcher for picking user local videos from phone gallery
     val videoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -237,84 +246,74 @@ fun VideoCompressorScreen(
             scope.launch(Dispatchers.IO) {
                 val file = FileUtil.getFileFromUri(context, uri)
                 if (file != null) {
-                    customFile = file
-                    isCustomUserVideo = true
-                    videoTitle = file.name
-                    originalSizeMb = file.length().toDouble() / (1024.0 * 1024.0)
-                    isCompressionDone = false
-
-                    // Try retrieving resolution & duration
-                    try {
-                        val retriever = MediaMetadataRetriever()
-                        retriever.setDataSource(file.absolutePath)
-                        val width = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH) ?: "1920"
-                        val height = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT) ?: "1080"
-                        val durationMs = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 45000L
-                        retriever.release()
-
-                        val sec = (durationMs / 1000) % 60
-                        val min = (durationMs / 1000) / 60
-                        videoResolution = "${width}x${height}"
-                        videoDuration = String.format("%02d:%02d", min, sec)
-                    } catch (e: Exception) {
-                        videoResolution = "1920x1080"
-                        videoDuration = "00:45"
-                    }
+                    val details = VideoTranscoder.getVideoDetails(context, file)
+                    val name = file.name.takeIf { it.isNotBlank() } ?: "User_Video.mp4"
 
                     withContext(Dispatchers.Main) {
-                        snackbarHostState.showSnackbar("Loaded video: ${file.name}")
+                        currentVideoFile = file
+                        isCustomUserVideo = true
+                        videoTitle = name
+                        videoResolution = details.formattedResolution
+                        videoDuration = details.formattedDuration
+                        originalSizeMb = file.length().toDouble() / (1024.0 * 1024.0)
+                        compressedTitle = "${name.removeSuffix(".mp4")}_Compressed.mp4"
+                        isCompressionDone = false
+                        isHeroPlaying = false
+                        snackbarHostState.showSnackbar("Loaded gallery video: $name")
                     }
                 }
             }
         }
     }
 
-    // Function to run compression
+    // Function to run real video compression
     fun startCompressionProcess() {
+        val input = currentVideoFile
+        if (input == null || !input.exists()) {
+            scope.launch { snackbarHostState.showSnackbar("Please select a video source first.") }
+            return
+        }
+
         isCompressing = true
         compressionProgress = 0.05f
         isCompressionDone = false
 
         scope.launch(Dispatchers.IO) {
-            val steps = listOf(
-                "Analyzing video track & bitrates...",
-                "Configuring H.264 encoder parameters...",
-                "Optimizing frame quantization...",
-                "Compressing video streams...",
-                "Muxing audio & video into output MP4...",
-                "Finalizing video file headers..."
-            )
-
-            for (i in 1..20) {
-                delay(120)
-                val stepIdx = ((i / 20f) * (steps.size - 1)).toInt()
-                withContext(Dispatchers.Main) {
-                    compressionProgress = i / 20f
-                    compressionStatusText = steps[stepIdx]
-                }
-            }
-
-            // Generate output compressed video file
             val outputName = "${videoTitle.removeSuffix(".mp4")}_Compressed.mp4"
             val outputFile = File(context.cacheDir, outputName)
 
-            if (customFile != null) {
-                fallbackFastCompress(customFile!!, outputFile)
+            val success = VideoTranscoder.compressVideo(
+                context = context,
+                inputFile = input,
+                outputFile = outputFile,
+                targetQualityPercent = compressionRatioPercent,
+                onProgress = { progress, status ->
+                    scope.launch(Dispatchers.Main) {
+                        compressionProgress = progress
+                        compressionStatusText = status
+                    }
+                }
+            )
+
+            if (success && outputFile.exists()) {
+                val actualBytes = outputFile.length()
+                val actualMb = Math.max(0.2, actualBytes.toDouble() / (1024.0 * 1024.0))
+                val savedUri = FileUtil.saveVideoToGallery(context, outputFile, outputName)
+
+                withContext(Dispatchers.Main) {
+                    isCompressing = false
+                    isCompressionDone = true
+                    compressedTitle = outputName
+                    compressedSizeMb = actualMb
+                    compressedFile = outputFile
+                    savedVideoUri = savedUri ?: Uri.fromFile(outputFile)
+                    snackbarHostState.showSnackbar("Compression finished! Video saved to Gallery.")
+                }
             } else {
-                createDummyCompressedVideo(outputFile)
-            }
-
-            val finalSizeMb = Math.max(0.5, estimatedSizeMb)
-            val uri = FileUtil.saveVideoToGallery(context, outputFile, outputName)
-
-            withContext(Dispatchers.Main) {
-                isCompressing = false
-                isCompressionDone = true
-                compressedTitle = outputName
-                compressedSizeMb = finalSizeMb
-                compressedFile = outputFile
-                savedVideoUri = uri
-                snackbarHostState.showSnackbar("Video compressed successfully! Saved to Gallery / Movies.")
+                withContext(Dispatchers.Main) {
+                    isCompressing = false
+                    snackbarHostState.showSnackbar("Unable to compress video file. Please check storage permissions.")
+                }
             }
         }
     }
@@ -411,11 +410,6 @@ fun VideoCompressorScreen(
                                     .clickable {
                                         isCustomUserVideo = false
                                         selectedSample = sample
-                                        videoTitle = sample.title
-                                        videoResolution = sample.resolution
-                                        videoDuration = sample.duration
-                                        originalSizeMb = sample.sizeMb
-                                        isCompressionDone = false
                                     }
                                     .padding(horizontal = 12.dp, vertical = 8.dp)
                             ) {
@@ -451,56 +445,70 @@ fun VideoCompressorScreen(
                         .border(1.dp, CardBorderColor, RoundedCornerShape(20.dp))
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        if (videoThumbnailBitmap != null) {
-                            Image(
-                                bitmap = videoThumbnailBitmap!!.asImageBitmap(),
-                                contentDescription = "Video Preview Frame",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                        if (isHeroPlaying && currentVideoFile != null) {
+                            // ExoPlayer Video View
+                            ExoPlayerVideoView(
+                                videoUri = Uri.fromFile(currentVideoFile),
+                                modifier = Modifier.fillMaxSize()
                             )
                         } else {
+                            // Video Thumbnail Preview
+                            if (videoThumbnailBitmap != null) {
+                                Image(
+                                    bitmap = videoThumbnailBitmap!!.asImageBitmap(),
+                                    contentDescription = "Video Preview Frame",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(Color(0xFF1E1B38), Color(0xFF0F0D1C))
+                                            )
+                                        )
+                                )
+                            }
+
+                            // Dark Gradient Overlay
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .background(
                                         Brush.verticalGradient(
-                                            colors = listOf(Color(0xFF1E1B38), Color(0xFF0F0D1C))
+                                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
                                         )
                                     )
                             )
-                        }
 
-                        // Gradient Overlay
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.verticalGradient(
-                                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
-                                    )
+                            // Play Button Icon
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.Black.copy(alpha = 0.6f))
+                                    .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                                    .clickable {
+                                        if (currentVideoFile != null) {
+                                            isHeroPlaying = true
+                                        } else {
+                                            playingFile = currentVideoFile
+                                            playingTitle = videoTitle
+                                            showPlayerDialog = true
+                                        }
+                                    }
+                                    .align(Alignment.Center),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Play Video",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(36.dp)
                                 )
-                        )
-
-                        // Center Play Icon Button
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(Color.Black.copy(alpha = 0.5f))
-                                .border(1.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                                .clickable {
-                                    playingVideoTitle = videoTitle
-                                    showPlayerDialog = true
-                                }
-                                .align(Alignment.Center),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "Play Video",
-                                tint = Color.White,
-                                modifier = Modifier.size(36.dp)
-                            )
+                            }
                         }
 
                         // Bottom Title Badge inside player
@@ -512,7 +520,7 @@ fun VideoCompressorScreen(
                             modifier = Modifier
                                 .align(Alignment.BottomStart)
                                 .padding(12.dp)
-                                .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                                .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
@@ -547,7 +555,12 @@ fun VideoCompressorScreen(
                                 modifier = Modifier
                                     .size(width = 64.dp, height = 48.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF201B3B)),
+                                    .background(Color(0xFF201B3B))
+                                    .clickable {
+                                        playingFile = currentVideoFile
+                                        playingTitle = videoTitle
+                                        showPlayerDialog = true
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (videoThumbnailBitmap != null) {
@@ -654,7 +667,14 @@ fun VideoCompressorScreen(
                                 modifier = Modifier
                                     .size(width = 64.dp, height = 48.dp)
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(Color(0xFF201B3B)),
+                                    .background(Color(0xFF201B3B))
+                                    .clickable {
+                                        if (compressedFile != null) {
+                                            playingFile = compressedFile
+                                            playingTitle = compressedTitle
+                                            showPlayerDialog = true
+                                        }
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
                                 if (videoThumbnailBitmap != null) {
@@ -869,7 +889,7 @@ fun VideoCompressorScreen(
                     }
                 }
 
-                // Progress Bar Card during compression
+                // Real Progress Bar Card during compression
                 if (isCompressing) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = SurfaceCardBg),
@@ -920,7 +940,7 @@ fun VideoCompressorScreen(
                     }
                 }
 
-                // 5. Main Action Button: Compress Video / Save & Share Options
+                // 5. Main Action Button: Compress Video
                 if (!isCompressing) {
                     Button(
                         onClick = { startCompressionProcess() },
@@ -959,7 +979,8 @@ fun VideoCompressorScreen(
                     ) {
                         Button(
                             onClick = {
-                                playingVideoTitle = compressedTitle
+                                playingFile = compressedFile
+                                playingTitle = compressedTitle
                                 showPlayerDialog = true
                             },
                             modifier = Modifier.weight(1f),
@@ -1025,8 +1046,8 @@ fun VideoCompressorScreen(
         }
     }
 
-    // Video Player Dialog Mockup
-    if (showPlayerDialog) {
+    // Video Player Dialog powered by Media3 ExoPlayer
+    if (showPlayerDialog && playingFile != null) {
         AlertDialog(
             onDismissRequest = { showPlayerDialog = false },
             confirmButton = {
@@ -1035,33 +1056,21 @@ fun VideoCompressorScreen(
                 }
             },
             title = {
-                Text(text = "Now Playing: $playingVideoTitle", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text(text = "Now Playing: $playingTitle", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
             },
             text = {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(200.dp)
+                        .height(240.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color.Black),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.PlayCircleFilled,
-                            contentDescription = null,
-                            tint = OrangePrimary,
-                            modifier = Modifier.size(54.dp)
-                        )
-                        Text(
-                            text = "Simulated Video Playback",
-                            color = Color.White,
-                            fontSize = 12.sp
-                        )
-                    }
+                    ExoPlayerVideoView(
+                        videoUri = Uri.fromFile(playingFile),
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             },
             containerColor = SurfaceCardBg,
@@ -1104,6 +1113,42 @@ private fun FeatureBadgeItem(
     }
 }
 
+@OptIn(UnstableApi::class)
+@Composable
+private fun ExoPlayerVideoView(
+    videoUri: Uri,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val exoPlayer = remember(videoUri) {
+        ExoPlayer.Builder(context).build().apply {
+            val mediaItem = MediaItem.fromUri(videoUri)
+            setMediaItem(mediaItem)
+            prepare()
+            playWhenReady = true
+            repeatMode = Player.REPEAT_MODE_ALL
+        }
+    }
+
+    DisposableEffect(videoUri) {
+        onDispose {
+            exoPlayer.release()
+        }
+    }
+
+    AndroidView(
+        factory = { ctx ->
+            PlayerView(ctx).apply {
+                player = exoPlayer
+                useController = true
+                setShowNextButton(false)
+                setShowPreviousButton(false)
+            }
+        },
+        modifier = modifier
+    )
+}
+
 // Generates scenic landscape thumbnail gradient bitmap for sample videos
 private fun createSampleThumbnail(colors: List<Int>): Bitmap {
     val bitmap = Bitmap.createBitmap(640, 360, Bitmap.Config.ARGB_8888)
@@ -1119,7 +1164,6 @@ private fun createSampleThumbnail(colors: List<Int>): Bitmap {
     }
     canvas.drawRect(0f, 0f, 640f, 360f, paint)
 
-    // Draw stylized mountain silhouette
     val mountainPaint = Paint().apply {
         color = AndroidColor.argb(180, 15, 10, 30)
         style = Paint.Style.FILL
@@ -1136,7 +1180,6 @@ private fun createSampleThumbnail(colors: List<Int>): Bitmap {
     }
     canvas.drawPath(path, mountainPaint)
 
-    // Sun / Moon in sky
     val sunPaint = Paint().apply {
         color = AndroidColor.argb(220, 255, 180, 80)
         style = Paint.Style.FILL
@@ -1144,22 +1187,4 @@ private fun createSampleThumbnail(colors: List<Int>): Bitmap {
     canvas.drawCircle(500f, 100f, 32f, sunPaint)
 
     return bitmap
-}
-
-private fun fallbackFastCompress(inputFile: File, outputFile: File) {
-    try {
-        outputFile.writeBytes(inputFile.readBytes())
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
-}
-
-private fun createDummyCompressedVideo(outputFile: File) {
-    try {
-        FileOutputStream(outputFile).use { fos ->
-            fos.write("COMPRESSED_VIDEO_MP4_HEADER_DATA_SAMPLE".toByteArray())
-        }
-    } catch (e: Exception) {
-        e.printStackTrace()
-    }
 }
