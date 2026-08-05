@@ -47,7 +47,7 @@ object ImageProcessingUtil {
     private fun applyGrayscale(source: Bitmap): Bitmap {
         val bitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val paint = Paint().apply {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             colorFilter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(0f) })
         }
         canvas.drawBitmap(source, 0f, 0f, paint)
@@ -59,18 +59,17 @@ object ImageProcessingUtil {
         val canvas = Canvas(bitmap)
         
         val cm = ColorMatrix().apply {
-            // Increase saturation and slight contrast boost
-            setSaturation(1.3f)
+            setSaturation(1.25f)
         }
         val contrastMatrix = ColorMatrix(floatArrayOf(
-            1.15f, 0f, 0f, 0f, -10f,
-            0f, 1.15f, 0f, 0f, -10f,
-            0f, 0f, 1.15f, 0f, -10f,
+            1.15f, 0f, 0f, 0f, -8f,
+            0f, 1.15f, 0f, 0f, -8f,
+            0f, 0f, 1.15f, 0f, -8f,
             0f, 0f, 0f, 1f, 0f
         ))
         cm.postConcat(contrastMatrix)
 
-        val paint = Paint().apply {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             colorFilter = ColorMatrixColorFilter(cm)
         }
         canvas.drawBitmap(source, 0f, 0f, paint)
@@ -81,16 +80,19 @@ object ImageProcessingUtil {
         val bitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         
-        // High contrast B&W matrix
-        val matrix = ColorMatrix(floatArrayOf(
-            85f, 85f, 85f, 0f, -25000f,
-            85f, 85f, 85f, 0f, -25000f,
-            85f, 85f, 85f, 0f, -25000f,
+        val cm = ColorMatrix().apply { setSaturation(0f) }
+        val contrast = 1.8f
+        val translate = (-0.5f * contrast + 0.5f) * 255f
+        val contrastMatrix = ColorMatrix(floatArrayOf(
+            contrast, 0f, 0f, 0f, translate,
+            0f, contrast, 0f, 0f, translate,
+            0f, 0f, contrast, 0f, translate,
             0f, 0f, 0f, 1f, 0f
         ))
+        cm.postConcat(contrastMatrix)
         
-        val paint = Paint().apply {
-            colorFilter = ColorMatrixColorFilter(matrix)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(cm)
         }
         canvas.drawBitmap(source, 0f, 0f, paint)
         return bitmap
@@ -100,16 +102,17 @@ object ImageProcessingUtil {
         val bitmap = Bitmap.createBitmap(source.width, source.height, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         
-        // Document Magic Color: Whitens background, sharpens text contrast, boosts color vibrancy
-        val matrix = ColorMatrix(floatArrayOf(
-            1.5f, 0.2f, 0.0f, 0f, -40f,
-            0.1f, 1.5f, 0.1f, 0f, -40f,
-            0.0f, 0.2f, 1.5f, 0f, -40f,
-            0.0f, 0.0f, 0.0f, 1f, 0f
+        val cm = ColorMatrix().apply { setSaturation(1.15f) }
+        val contrastMatrix = ColorMatrix(floatArrayOf(
+            1.25f, 0f, 0f, 0f, -12f,
+            0f, 1.25f, 0f, 0f, -12f,
+            0f, 0f, 1.25f, 0f, -12f,
+            0f, 0f, 0f, 1f, 0f
         ))
+        cm.postConcat(contrastMatrix)
         
-        val paint = Paint().apply {
-            colorFilter = ColorMatrixColorFilter(matrix)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(cm)
         }
         canvas.drawBitmap(source, 0f, 0f, paint)
         return bitmap

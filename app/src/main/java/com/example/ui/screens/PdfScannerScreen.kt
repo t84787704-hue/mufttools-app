@@ -18,6 +18,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -140,13 +141,18 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 
-data class ScannedPage(
+class ScannedPage(
     val id: String = UUID.randomUUID().toString(),
-    var originalBitmap: Bitmap,
-    var cropCorners: CropCorners = ImageProcessingUtil.autoDetectEdges(originalBitmap),
-    var filter: ImageFilterType = ImageFilterType.COLOR,
-    var isCropped: Boolean = false
+    initialBitmap: Bitmap,
+    initialCorners: CropCorners = ImageProcessingUtil.autoDetectEdges(initialBitmap),
+    initialFilter: ImageFilterType = ImageFilterType.COLOR,
+    initialCropped: Boolean = false
 ) {
+    var originalBitmap by mutableStateOf(initialBitmap)
+    var cropCorners by mutableStateOf(initialCorners)
+    var filter by mutableStateOf(initialFilter)
+    var isCropped by mutableStateOf(initialCropped)
+
     fun renderProcessed(): Bitmap {
         val cropped = if (isCropped) {
             ImageProcessingUtil.cropBitmap(originalBitmap, cropCorners)
@@ -209,7 +215,7 @@ fun PdfScannerScreen(
                         context.contentResolver.openInputStream(uri)?.use { stream ->
                             val bitmap = BitmapFactory.decodeStream(stream)
                             if (bitmap != null) {
-                                val newPage = ScannedPage(originalBitmap = bitmap)
+                                val newPage = ScannedPage(initialBitmap = bitmap)
                                 pages.add(newPage)
                             }
                         }
@@ -313,7 +319,7 @@ fun PdfScannerScreen(
                                             scope.launch(Dispatchers.IO) {
                                                 val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
                                                 if (bitmap != null) {
-                                                    val newPage = ScannedPage(originalBitmap = bitmap)
+                                                    val newPage = ScannedPage(initialBitmap = bitmap)
                                                     pages.add(newPage)
                                                 }
                                                 isProcessing = false
@@ -372,17 +378,23 @@ fun PdfScannerScreen(
                                 scope.launch(Dispatchers.IO) {
                                     isProcessing = true
                                     val rotated = ImageProcessingUtil.rotateBitmap(activePage.originalBitmap, 90f)
-                                    activePage.originalBitmap = rotated
-                                    activePage.cropCorners = ImageProcessingUtil.autoDetectEdges(rotated)
-                                    isProcessing = false
+                                    val autoCorners = ImageProcessingUtil.autoDetectEdges(rotated)
+                                    withContext(Dispatchers.Main) {
+                                        activePage.originalBitmap = rotated
+                                        activePage.cropCorners = autoCorners
+                                        isProcessing = false
+                                    }
                                 }
                             },
                             onAutoDetectEdges = {
                                 scope.launch(Dispatchers.IO) {
                                     isProcessing = true
-                                    activePage.cropCorners = ImageProcessingUtil.autoDetectEdges(activePage.originalBitmap)
-                                    activePage.isCropped = true
-                                    isProcessing = false
+                                    val autoCorners = ImageProcessingUtil.autoDetectEdges(activePage.originalBitmap)
+                                    withContext(Dispatchers.Main) {
+                                        activePage.cropCorners = autoCorners
+                                        activePage.isCropped = true
+                                        isProcessing = false
+                                    }
                                 }
                             },
                             onFilterSelected = { filter ->
@@ -811,93 +823,109 @@ fun PageEditView(
             }
         }
 
-        // Main Document Preview Card with Glowing Corner Brackets (Matching Screenshot!)
-        Box(
+        // Main Document Preview Card with Glowing Corner Brackets
+        BoxWithConstraints(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 12.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (isCropMode) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(RoundedCornerShape(12.dp))
-                ) {
-                    Image(
-                        bitmap = page.originalBitmap.asImageBitmap(),
-                        contentDescription = "Original Page",
-                        modifier = Modifier.fillMaxSize()
-                    )
-                    CropOverlay(
-                        cropCorners = page.cropCorners,
-                        onCornersChanged = onCropCornersChanged,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            } else {
-                // Futuristic Glowing Scanner Card Box
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color(0xFF14102B), RoundedCornerShape(16.dp))
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    // Grid pattern overlay
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val gridSpacing = 30.dp.toPx()
-                        val gridColor = Color(0xFF281E48)
-                        var x = 0f
-                        while (x < size.width) {
-                            drawLine(gridColor, Offset(x, 0f), Offset(x, size.height), strokeWidth = 1f)
-                            x += gridSpacing
+            val containerW = maxWidth
+            val containerH = maxHeight
+
+            val currentBmp = if (isCropMode) page.originalBitmap else processedBitmap
+            val bmpW = currentBmp.width.toFloat().coerceAtLeast(1f)
+            val bmpH = currentBmp.height.toFloat().coerceAtLeast(1f)
+
+            val containerAspect = containerW.value / containerH.value
+            val bmpAspect = bmpW / bmpH
+
+            val fittedWidth = if (bmpAspect > containerAspect) containerW else containerH * bmpAspect
+            val fittedHeight = if (bmpAspect > containerAspect) containerW / bmpAspect else containerH
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                if (isCropMode) {
+                    // Top Crop Control Chips
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(
+                            onClick = {
+                                page.cropCorners = CropCorners(Offset(0f, 0f), Offset(1f, 0f), Offset(1f, 1f), Offset(0f, 1f))
+                                page.isCropped = false
+                            }
+                        ) {
+                            Text("Full Image", color = Color.White, fontSize = 12.sp)
                         }
-                        var y = 0f
-                        while (y < size.height) {
-                            drawLine(gridColor, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
-                            y += gridSpacing
+                        TextButton(onClick = { onAutoDetectEdges() }) {
+                            Text("Auto Edge", color = CyanPrimary, fontSize = 12.sp)
+                        }
+                        Button(
+                            onClick = {
+                                page.isCropped = true
+                                isCropMode = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = VioletGlowing),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Done", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
+                }
 
-                    // White Document Paper Card
+                Box(
+                    modifier = Modifier
+                        .size(fittedWidth, fittedHeight)
+                        .background(Color(0xFF14102B), RoundedCornerShape(12.dp))
+                        .padding(4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Card(
                         elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                         shape = RoundedCornerShape(8.dp),
                         colors = CardDefaults.cardColors(containerColor = Color.White),
-                        modifier = Modifier
-                            .fillMaxHeight(0.92f)
-                            .padding(12.dp)
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         Image(
-                            bitmap = processedBitmap.asImageBitmap(),
+                            bitmap = currentBmp.asImageBitmap(),
                             contentDescription = "Document Page",
                             modifier = Modifier.fillMaxSize()
                         )
                     }
 
-                    // Glowing Corner Reticles (Matching purple brackets ⌜ ⌝ ⌞ ⌟ in screenshot)
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        val cornerLen = 28.dp.toPx()
-                        val strokeW = 5.dp.toPx()
-                        val color = Color(0xFFA855F7)
+                    if (isCropMode) {
+                        CropOverlay(
+                            cropCorners = page.cropCorners,
+                            onCornersChanged = onCropCornersChanged,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        // Glowing Corner Reticles
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val cornerLen = 24.dp.toPx()
+                            val strokeW = 4.dp.toPx()
+                            val color = Color(0xFFA855F7)
 
-                        // Top-Left corner ⌜
-                        drawLine(color, Offset(4f, 4f), Offset(4f + cornerLen, 4f), strokeWidth = strokeW)
-                        drawLine(color, Offset(4f, 4f), Offset(4f, 4f + cornerLen), strokeWidth = strokeW)
+                            drawLine(color, Offset(2f, 2f), Offset(2f + cornerLen, 2f), strokeWidth = strokeW)
+                            drawLine(color, Offset(2f, 2f), Offset(2f, 2f + cornerLen), strokeWidth = strokeW)
 
-                        // Top-Right corner ⌝
-                        drawLine(color, Offset(size.width - 4f, 4f), Offset(size.width - 4f - cornerLen, 4f), strokeWidth = strokeW)
-                        drawLine(color, Offset(size.width - 4f, 4f), Offset(size.width - 4f, 4f + cornerLen), strokeWidth = strokeW)
+                            drawLine(color, Offset(size.width - 2f, 2f), Offset(size.width - 2f - cornerLen, 2f), strokeWidth = strokeW)
+                            drawLine(color, Offset(size.width - 2f, 2f), Offset(size.width - 2f, 2f + cornerLen), strokeWidth = strokeW)
 
-                        // Bottom-Left corner ⌞
-                        drawLine(color, Offset(4f, size.height - 4f), Offset(4f + cornerLen, size.height - 4f), strokeWidth = strokeW)
-                        drawLine(color, Offset(4f, size.height - 4f), Offset(4f, size.height - 4f - cornerLen), strokeWidth = strokeW)
+                            drawLine(color, Offset(2f, size.height - 2f), Offset(2f + cornerLen, size.height - 2f), strokeWidth = strokeW)
+                            drawLine(color, Offset(2f, size.height - 2f), Offset(2f, size.height - 2f - cornerLen), strokeWidth = strokeW)
 
-                        // Bottom-Right corner ⌟
-                        drawLine(color, Offset(size.width - 4f, size.height - 4f), Offset(size.width - 4f - cornerLen, size.height - 4f), strokeWidth = strokeW)
-                        drawLine(color, Offset(size.width - 4f, size.height - 4f), Offset(size.width - 4f, size.height - 4f - cornerLen), strokeWidth = strokeW)
+                            drawLine(color, Offset(size.width - 2f, size.height - 2f), Offset(size.width - 2f - cornerLen, size.height - 2f), strokeWidth = strokeW)
+                            drawLine(color, Offset(size.width - 2f, size.height - 2f), Offset(size.width - 2f, size.height - 2f - cornerLen), strokeWidth = strokeW)
+                        }
                     }
                 }
             }
