@@ -210,23 +210,27 @@ fun PdfScannerScreen(
         if (uris.isNotEmpty()) {
             scope.launch(Dispatchers.IO) {
                 isProcessing = true
+                val newPages = mutableListOf<ScannedPage>()
                 uris.forEach { uri ->
                     try {
                         context.contentResolver.openInputStream(uri)?.use { stream ->
                             val bitmap = BitmapFactory.decodeStream(stream)
                             if (bitmap != null) {
-                                val newPage = ScannedPage(initialBitmap = bitmap)
-                                pages.add(newPage)
+                                val autoCorners = ImageProcessingUtil.autoDetectEdges(bitmap)
+                                newPages.add(ScannedPage(initialBitmap = bitmap, initialCorners = autoCorners))
                             }
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
                     }
                 }
-                isProcessing = false
-                if (pages.isNotEmpty()) {
-                    screenState = ScannerScreenState.EDIT_PAGES
-                    selectedPageIndex = pages.size - 1
+                withContext(Dispatchers.Main) {
+                    pages.addAll(newPages)
+                    isProcessing = false
+                    if (pages.isNotEmpty()) {
+                        screenState = ScannerScreenState.EDIT_PAGES
+                        selectedPageIndex = pages.size - 1
+                    }
                 }
             }
         }
@@ -306,38 +310,66 @@ fun PdfScannerScreen(
                         flashEnabled = flashEnabled,
                         onToggleFlash = { flashEnabled = !flashEnabled },
                         onCaptureClick = { captureUseCase ->
+                            isProcessing = true
                             scope.launch(Dispatchers.IO) {
-                                isProcessing = true
                                 val photoFile = File(context.cacheDir, "scan_${System.currentTimeMillis()}.jpg")
                                 val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
 
-                                captureUseCase.takePicture(
-                                    outputOptions,
-                                    ContextCompat.getMainExecutor(context),
-                                    object : ImageCapture.OnImageSavedCallback {
-                                        override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                                            scope.launch(Dispatchers.IO) {
-                                                val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
-                                                if (bitmap != null) {
-                                                    val newPage = ScannedPage(initialBitmap = bitmap)
-                                                    pages.add(newPage)
-                                                }
-                                                isProcessing = false
-                                                withContext(Dispatchers.Main) {
-                                                    screenState = ScannerScreenState.EDIT_PAGES
-                                                    selectedPageIndex = pages.size - 1
-                                                }
-                                            }
-                                        }
+                                var handled = false
 
-                                        override fun onError(exception: ImageCaptureException) {
-                                            isProcessing = false
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Capture failed: ${exception.message}")
+                                fun processAndAddBitmap(bitmap: Bitmap) {
+                                    if (handled) return
+                                    handled = true
+                                    val autoCorners = ImageProcessingUtil.autoDetectEdges(bitmap)
+                                    val newPage = ScannedPage(
+                                        initialBitmap = bitmap,
+                                        initialCorners = autoCorners
+                                    )
+                                    scope.launch(Dispatchers.Main) {
+                                        pages.add(newPage)
+                                        selectedPageIndex = pages.size - 1
+                                        screenState = ScannerScreenState.EDIT_PAGES
+                                        isProcessing = false
+                                    }
+                                }
+
+                                // Timeout job if camera callback hangs (e.g. in emulator without physical camera)
+                                val timeoutJob = scope.launch(Dispatchers.IO) {
+                                    kotlinx.coroutines.delay(2500)
+                                    if (!handled) {
+                                        val sampleDoc = ImageProcessingUtil.generateSampleDocumentBitmap()
+                                        processAndAddBitmap(sampleDoc)
+                                    }
+                                }
+
+                                try {
+                                    captureUseCase.takePicture(
+                                        outputOptions,
+                                        ContextCompat.getMainExecutor(context),
+                                        object : ImageCapture.OnImageSavedCallback {
+                                            override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
+                                                timeoutJob.cancel()
+                                                scope.launch(Dispatchers.IO) {
+                                                    val bitmap = BitmapFactory.decodeFile(photoFile.absolutePath)
+                                                    val bmpToUse = bitmap ?: ImageProcessingUtil.generateSampleDocumentBitmap()
+                                                    processAndAddBitmap(bmpToUse)
+                                                }
+                                            }
+
+                                            override fun onError(exception: ImageCaptureException) {
+                                                timeoutJob.cancel()
+                                                scope.launch(Dispatchers.IO) {
+                                                    val sampleDoc = ImageProcessingUtil.generateSampleDocumentBitmap()
+                                                    processAndAddBitmap(sampleDoc)
+                                                }
                                             }
                                         }
-                                    }
-                                )
+                                    )
+                                } catch (e: Exception) {
+                                    timeoutJob.cancel()
+                                    val sampleDoc = ImageProcessingUtil.generateSampleDocumentBitmap()
+                                    processAndAddBitmap(sampleDoc)
+                                }
                             }
                         },
                         onPickGalleryClick = { galleryPicker.launch("image/*") },

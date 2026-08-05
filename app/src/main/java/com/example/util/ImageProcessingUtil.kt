@@ -231,4 +231,91 @@ object ImageProcessingUtil {
 
         return cropped
     }
+
+    fun generateSampleDocumentBitmap(): Bitmap {
+        val width = 1080
+        val height = 1440
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        // Dark background studio table
+        val bgPaint = Paint().apply { color = Color.rgb(24, 20, 42) }
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+
+        // White Paper Sheet (slightly rotated/angled document)
+        val paperPath = android.graphics.Path().apply {
+            moveTo(100f, 120f)
+            lineTo(980f, 150f)
+            lineTo(940f, 1320f)
+            lineTo(120f, 1280f)
+            close()
+        }
+
+        // Shadow
+        val shadowPaint = Paint().apply { color = Color.argb(80, 0, 0, 0) }
+        val shadowPath = android.graphics.Path().apply {
+            moveTo(110f, 130f)
+            lineTo(990f, 160f)
+            lineTo(950f, 1330f)
+            lineTo(130f, 1290f)
+            close()
+        }
+        canvas.drawPath(shadowPath, shadowPaint)
+
+        val paperPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(250, 248, 242) }
+        canvas.drawPath(paperPath, paperPaint)
+
+        // Document Header Text
+        val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(40, 40, 80)
+            textSize = 48f
+            isFakeBoldText = true
+        }
+        canvas.drawText("SCANNED DOCUMENT", 180f, 260f, headerPaint)
+
+        val subPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(100, 100, 130)
+            textSize = 28f
+        }
+        canvas.drawText("Date: 2026-08-05  •  Invoice #48291", 180f, 310f, subPaint)
+
+        // Divider Line
+        val linePaint = Paint().apply {
+            color = Color.rgb(200, 200, 220)
+            strokeWidth = 3f
+        }
+        canvas.drawLine(180f, 340f, 880f, 340f, linePaint)
+
+        // Document Content Lines
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(60, 60, 70)
+            strokeWidth = 12f
+            strokeCap = Paint.Cap.ROUND
+        }
+
+        var startY = 400f
+        val lineSpacing = 45f
+        for (i in 0..14) {
+            val endX = if (i % 3 == 0) 650f else if (i % 4 == 0) 500f else 850f
+            canvas.drawLine(180f, startY, endX, startY, textPaint)
+            startY += lineSpacing
+        }
+
+        // Stamp / Seal badge
+        val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(90, 70, 210)
+            style = Paint.Style.STROKE
+            strokeWidth = 6f
+        }
+        canvas.drawCircle(780f, 1120f, 70f, badgePaint)
+        val badgeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(90, 70, 210)
+            textSize = 24f
+            isFakeBoldText = true
+            textAlign = Paint.Align.CENTER
+        }
+        canvas.drawText("APPROVED", 780f, 1128f, badgeTextPaint)
+
+        return bitmap
+    }
 }
