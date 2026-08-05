@@ -8,6 +8,9 @@ val DarkSurfaceVariant = Color(0xFF334155)
 
 val CyanPrimary = Color(0xFF38BDF8)
 val VioletSecondary = Color(0xFFA855F7)
+val VioletGlowing = Color(0xFF9D4EDD)
+val VioletButton = Color(0xFF7B2CBF)
+val CrownGold = Color(0xFFFFD700)
 val EmeraldTertiary = Color(0xFF34D399)
 
 val AccentAmber = Color(0xFFF59E0B)

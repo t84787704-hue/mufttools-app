@@ -1,91 +1,143 @@
+// import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    id("org.jetbrains.kotlin.plugin.compose") version "2.0.0"
+  alias(libs.plugins.android.application)
+  alias(libs.plugins.kotlin.android)
+  alias(libs.plugins.kotlin.compose)
+  alias(libs.plugins.google.devtools.ksp)
+  alias(libs.plugins.roborazzi)
+// plugins {
+//   alias(libs.plugins.secrets)
+// }
+// alias(libs.plugins.google.services)
 }
 
 android {
-    namespace = "com.mufttools.scanner"
-    compileSdk = 34
+  namespace = "com.example"
+  compileSdk = 35
 
-    defaultConfig {
-        applicationId = "com.mufttools.scanner"
-        minSdk = 24
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+  defaultConfig {
+    applicationId = "com.freetools.offline"
+    minSdk = 24
+    targetSdk = 35
+    versionCode = 2
+    versionName = "1.0.1"
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables {
-            useSupportLibrary = true
-        }
-        
-        ndk {
-            abiFilters.addAll(setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
-        }
-    }
+    testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+  }
 
-    buildTypes {
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
+  signingConfigs {
+    create("release") {
+      val ksFile = file("mufttools-release.jks").takeIf { it.exists() }
+        ?: file("${rootDir}/mufttools-release.jks").takeIf { it.exists() }
+        ?: file("${rootDir}/app/mufttools-release.jks").takeIf { it.exists() }
+        ?: file("mufttools-release.jks")
+
+      storeFile = ksFile
+      storePassword = "mufttools123"
+      keyAlias = "mufttools"
+      keyPassword = "mufttools123"
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+  }
+
+  buildTypes {
+    release {
+      isCrunchPngs = false
+      isMinifyEnabled = false
+      isShrinkResources = false
+      proguardFiles(getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro")
+      signingConfig = signingConfigs.getByName("release")
     }
-    kotlinOptions {
-        jvmTarget = "17"
+    debug {
+      isMinifyEnabled = false
+      isShrinkResources = false
     }
-    buildFeatures {
-        compose = true
-    }
-    packaging {
-        resources {
-            excludes += "/META-INF/{AL2.0,LGPL2.1}"
-        }
-    }
+  }
+  compileOptions {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+  }
+  kotlinOptions {
+    jvmTarget = "11"
+  }
+  buildFeatures {
+    compose = true
+    buildConfig = true
+  }
+  testOptions { unitTests { isIncludeAndroidResources = true } }
 }
 
+// secrets plugin disabled for 100% offline app
+
+// googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
+
+// Some unused dependencies are commented out below instead of being removed.
+// This makes it easy to add them back in the future if needed.
 dependencies {
-    // AndroidX Core & Lifecycle
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.activity:activity-compose:1.8.2")
+  implementation(platform(libs.androidx.compose.bom))
+  implementation(libs.accompanist.permissions)
+  implementation(libs.androidx.activity.compose)
+  implementation(libs.androidx.camera.camera2)
+  implementation(libs.androidx.camera.core)
+  implementation(libs.androidx.camera.lifecycle)
+  implementation(libs.androidx.camera.view)
+  implementation(libs.coil.compose)
+  implementation(libs.pdfbox.android)
+  implementation(libs.mlkit.barcode.scanning)
+  implementation(libs.zxing.core)
+  implementation(libs.androidx.media3.transformer)
+  implementation(libs.androidx.media3.common)
+  implementation(libs.androidx.media3.effect)
+  implementation(libs.androidx.compose.material.icons.core)
+  implementation(libs.androidx.compose.material.icons.extended)
+  implementation(libs.androidx.compose.material3)
+  implementation(libs.androidx.compose.ui)
+  implementation(libs.androidx.compose.ui.graphics)
+  implementation(libs.androidx.compose.ui.tooling.preview)
+  implementation(libs.androidx.core.ktx)
+  // implementation(libs.androidx.datastore.preferences)
+  implementation(libs.androidx.lifecycle.runtime.compose)
+  implementation(libs.androidx.lifecycle.runtime.ktx)
+  implementation(libs.androidx.lifecycle.viewmodel.compose)
+  implementation(libs.androidx.navigation.compose)
+  implementation(libs.androidx.room.ktx)
+  implementation(libs.androidx.room.runtime)
+  // implementation(libs.coil.compose)
+  implementation(libs.converter.moshi)
+  // implementation(libs.firebase.ai)
+  // Uncomment to use Firestore:
+  // implementation(libs.firebase.firestore)
 
-    // Jetpack Compose
-    val composeBom = platform("androidx.compose:compose-bom:2024.02.01")
-    implementation(composeBom)
-    androidTestImplementation(composeBom)
-
-    implementation("androidx.compose.ui:ui")
-    implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
-    implementation("androidx.compose.material3:material3")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    implementation("androidx.compose.material:material-icons-extended:1.6.8")
-
-    // CameraX
-    val cameraVersion = "1.3.4"
-    implementation("androidx.camera:camera-core:$cameraVersion")
-    implementation("androidx.camera:camera-camera2:$cameraVersion")
-    implementation("androidx.camera:camera-lifecycle:$cameraVersion")
-    implementation("androidx.camera:camera-view:$cameraVersion")
-
-    // OpenCV Android SDK (Official Maven Central AAR)
-    implementation("org.opencv:opencv:4.10.0")
-
-    // PDF Generation (PDFBox Android)
-    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
-
-    // Image Loading (Coil Compose)
-    implementation("io.coil-kt:coil-compose:2.6.0")
-
-    // Coroutines
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
+  // Uncomment ALL FOUR of the following dependencies together to use Firebase Auth and Google
+  // Sign-In via Credential Manager:
+  // implementation(libs.firebase.auth)
+  // implementation(libs.androidx.credentials)
+  // implementation(libs.androidx.credentials.play.services)
+  // implementation(libs.googleid)
+  // implementation(libs.firebase.appcheck.recaptcha)
+  implementation(libs.kotlinx.coroutines.android)
+  implementation(libs.kotlinx.coroutines.core)
+  implementation(libs.logging.interceptor)
+  implementation(libs.moshi.kotlin)
+  implementation(libs.okhttp)
+  // implementation(libs.play.services.location)
+  implementation(libs.retrofit)
+  testImplementation(libs.androidx.compose.ui.test.junit4)
+  testImplementation(libs.androidx.core)
+  testImplementation(libs.androidx.junit)
+  testImplementation(libs.junit)
+  testImplementation(libs.kotlinx.coroutines.test)
+  testImplementation(libs.robolectric)
+  testImplementation(libs.roborazzi)
+  testImplementation(libs.roborazzi.compose)
+  testImplementation(libs.roborazzi.junit.rule)
+  androidTestImplementation(platform(libs.androidx.compose.bom))
+  androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+  androidTestImplementation(libs.androidx.espresso.core)
+  androidTestImplementation(libs.androidx.junit)
+  androidTestImplementation(libs.androidx.runner)
+  debugImplementation(libs.androidx.compose.ui.test.manifest)
+  debugImplementation(libs.androidx.compose.ui.tooling)
+  "ksp"(libs.androidx.room.compiler)
+  "ksp"(libs.moshi.kotlin.codegen)
 }
