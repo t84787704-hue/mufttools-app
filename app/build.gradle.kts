@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.pdfscanner"
+    namespace = "com.mufttools.scanner"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.pdfscanner"
+        applicationId = "com.mufttools.scanner"
         minSdk = 24
         targetSdk = 34
         versionCode = 1
@@ -55,16 +55,21 @@ android {
 }
 
 dependencies {
-    // AndroidX & Compose Core
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.ui)
-    implementation(libs.androidx.ui.graphics)
-    implementation(libs.androidx.ui.tooling.preview)
-    implementation(libs.androidx.material3)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // AndroidX Core & Lifecycle
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
+
+    // Jetpack Compose (Direct dependencies to fix Version Catalog errors)
+    val composeBom = platform("androidx.compose:compose-bom:2024.02.01")
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
     implementation("androidx.compose.material:material-icons-extended:1.6.8")
 
     // CameraX
@@ -74,8 +79,8 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$cameraVersion")
     implementation("androidx.camera:camera-view:$cameraVersion")
 
-    // OpenCV Android SDK
-    implementation("org.opencv:opencv:4.9.0")
+    // OpenCV Android SDK (Official Maven Central AAR)
+    implementation("org.opencv:opencv:4.10.0")
 
     // PDF Generation (PDFBox Android)
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
