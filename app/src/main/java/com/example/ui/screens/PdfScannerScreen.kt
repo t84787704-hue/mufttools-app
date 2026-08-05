@@ -1,6 +1,8 @@
 package com.example.ui.screens
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -673,6 +675,26 @@ fun CameraScannerView(
     onPickGalleryClick: () -> Unit,
     onProceedToEdit: () -> Unit
 ) {
+    val context = LocalContext.current
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var isCameraAvailable by remember { mutableStateOf(true) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasPermission = isGranted
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasPermission) {
+            permissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     val captureUseCase = remember(flashEnabled) {
         ImageCapture.Builder()
             .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
@@ -680,32 +702,152 @@ fun CameraScannerView(
             .build()
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        CameraPreview(
-            modifier = Modifier.fillMaxSize(),
-            imageCapture = captureUseCase
-        )
+    Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0D0B18))) {
+        if (hasPermission) {
+            CameraPreview(
+                modifier = Modifier.fillMaxSize(),
+                imageCapture = captureUseCase,
+                onCameraAvailableChanged = { available ->
+                    isCameraAvailable = available
+                }
+            )
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.End
-        ) {
-            IconButton(
-                onClick = onToggleFlash,
+            if (!isCameraAvailable) {
+                // Friendly fallback overlay when no physical camera feed exists (e.g. emulator)
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(32.dp)
+                        .padding(bottom = 80.dp)
+                        .align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(CircleShape)
+                            .background(VioletGlowing.copy(alpha = 0.2f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.CameraAlt,
+                            contentDescription = "Camera",
+                            tint = CyanPrimary,
+                            modifier = Modifier.size(44.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Camera Preview Ready",
+                        color = TextPrimary,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Tap the capture button to scan a document, or pick images from your gallery.",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(
+                            onClick = onPickGalleryClick,
+                            colors = ButtonDefaults.buttonColors(containerColor = DarkSurface),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Gallery", color = VioletGlowing)
+                        }
+                        Button(
+                            onClick = { onCaptureClick(captureUseCase) },
+                            colors = ButtonDefaults.buttonColors(containerColor = VioletGlowing),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Scan Document", color = Color.White)
+                        }
+                    }
+                }
+            }
+        } else {
+            // Permission request screen overlay
+            Column(
                 modifier = Modifier
-                    .clip(CircleShape)
-                    .background(Color.Black.copy(alpha = 0.5f))
+                    .fillMaxSize()
+                    .padding(32.dp)
+                    .padding(bottom = 80.dp)
+                    .align(Alignment.Center),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Icon(
-                    imageVector = if (flashEnabled) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
-                    contentDescription = "Flash",
-                    tint = if (flashEnabled) Color.Yellow else Color.White
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(VioletGlowing.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.CameraAlt,
+                        contentDescription = "Camera Permission",
+                        tint = VioletGlowing,
+                        modifier = Modifier.size(44.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Camera Permission Needed",
+                    color = TextPrimary,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Please allow camera access to scan physical documents directly with your camera.",
+                    color = TextSecondary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
+                    colors = ButtonDefaults.buttonColors(containerColor = VioletGlowing),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Grant Camera Access", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                TextButton(onClick = onPickGalleryClick) {
+                    Text("Or Select Images from Gallery", color = CyanPrimary)
+                }
             }
         }
 
+        // Top bar controls
+        if (hasPermission && isCameraAvailable) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                IconButton(
+                    onClick = onToggleFlash,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.5f))
+                ) {
+                    Icon(
+                        imageVector = if (flashEnabled) Icons.Filled.FlashOn else Icons.Filled.FlashOff,
+                        contentDescription = "Flash",
+                        tint = if (flashEnabled) Color.Yellow else Color.White
+                    )
+                }
+            }
+        }
+
+        // Bottom Controls Bar
         Box(
             modifier = Modifier
                 .fillMaxWidth()

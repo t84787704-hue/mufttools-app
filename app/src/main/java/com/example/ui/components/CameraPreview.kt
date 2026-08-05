@@ -22,7 +22,8 @@ fun CameraPreview(
     modifier: Modifier = Modifier,
     imageCapture: ImageCapture? = null,
     imageAnalysis: ImageAnalysis? = null,
-    cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    cameraSelector: CameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
+    onCameraAvailableChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -33,12 +34,16 @@ fun CameraPreview(
     DisposableEffect(cameraSelector, imageCapture, imageAnalysis) {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
-            val preview = Preview.Builder().build().also {
-                it.surfaceProvider = previewView.surfaceProvider
-            }
-
             try {
+                val cameraProvider = cameraProviderFuture.get()
+                if (!cameraProvider.hasCamera(cameraSelector)) {
+                    onCameraAvailableChanged(false)
+                    return@addListener
+                }
+                val preview = Preview.Builder().build().also {
+                    it.surfaceProvider = previewView.surfaceProvider
+                }
+
                 cameraProvider.unbindAll()
                 val useCases = mutableListOf<androidx.camera.core.UseCase>(preview)
                 imageCapture?.let { useCases.add(it) }
@@ -49,8 +54,10 @@ fun CameraPreview(
                     cameraSelector,
                     *useCases.toTypedArray()
                 )
+                onCameraAvailableChanged(true)
             } catch (e: Exception) {
                 e.printStackTrace()
+                onCameraAvailableChanged(false)
             }
         }, ContextCompat.getMainExecutor(context))
 
