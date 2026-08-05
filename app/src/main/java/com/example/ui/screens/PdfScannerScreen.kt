@@ -769,17 +769,16 @@ fun PageEditView(
 ) {
     var isCropMode by remember { mutableStateOf(false) }
 
-    // Pre-rendered thumbnails for filter carousel matching exact screenshot layout
-    val filterThumbnails = remember(page.originalBitmap, page.isCropped, page.cropCorners) {
-        val baseBmp = if (page.isCropped) ImageProcessingUtil.cropBitmap(page.originalBitmap, page.cropCorners) else page.originalBitmap
-        // Scale down for fast responsive thumbnail previews
+    // Pre-rendered thumbnails for filter carousel
+    val filterThumbnails = remember(page.originalBitmap, page.isCropped, isCropMode) {
+        val baseBmp = if (page.isCropped && !isCropMode) ImageProcessingUtil.cropBitmap(page.originalBitmap, page.cropCorners) else page.originalBitmap
         val thumb = Bitmap.createScaledBitmap(baseBmp, 120, (120f * baseBmp.height / baseBmp.width).toInt().coerceAtLeast(120), false)
         ImageFilterType.values().associateWith { filter ->
             ImageProcessingUtil.applyFilter(thumb, filter)
         }
     }
 
-    val processedBitmap = remember(page.originalBitmap, page.filter, page.isCropped, page.cropCorners) {
+    val processedBitmap = remember(page.originalBitmap, page.filter, page.isCropped, isCropMode) {
         page.renderProcessed()
     }
 

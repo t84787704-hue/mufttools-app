@@ -8,11 +8,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -26,21 +29,24 @@ fun CropOverlay(
     modifier: Modifier = Modifier
 ) {
     var activeHandle by remember { mutableStateOf<String?>(null) }
+    val currentCropCorners by rememberUpdatedState(cropCorners)
+    val currentOnCornersChanged by rememberUpdatedState(onCornersChanged)
 
     Box(modifier = modifier.fillMaxSize()) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(cropCorners) {
+                .pointerInput(Unit) {
                     detectDragGestures(
                         onDragStart = { offset ->
                             val width = size.width.toFloat()
                             val height = size.height.toFloat()
+                            val corners = currentCropCorners
 
-                            val tl = Offset(cropCorners.topLeft.x * width, cropCorners.topLeft.y * height)
-                            val tr = Offset(cropCorners.topRight.x * width, cropCorners.topRight.y * height)
-                            val br = Offset(cropCorners.bottomRight.x * width, cropCorners.bottomRight.y * height)
-                            val bl = Offset(cropCorners.bottomLeft.x * width, cropCorners.bottomLeft.y * height)
+                            val tl = Offset(corners.topLeft.x * width, corners.topLeft.y * height)
+                            val tr = Offset(corners.topRight.x * width, corners.topRight.y * height)
+                            val br = Offset(corners.bottomRight.x * width, corners.bottomRight.y * height)
+                            val bl = Offset(corners.bottomLeft.x * width, corners.bottomLeft.y * height)
 
                             val touchRadius = 60.dp.toPx()
 
@@ -62,36 +68,37 @@ fun CropOverlay(
 
                             val dx = dragAmount.x / width
                             val dy = dragAmount.y / height
+                            val corners = currentCropCorners
 
                             val newCorners = when (activeHandle) {
-                                "TL" -> cropCorners.copy(
+                                "TL" -> corners.copy(
                                     topLeft = Offset(
-                                        (cropCorners.topLeft.x + dx).coerceIn(0f, cropCorners.topRight.x - 0.05f),
-                                        (cropCorners.topLeft.y + dy).coerceIn(0f, cropCorners.bottomLeft.y - 0.05f)
+                                        (corners.topLeft.x + dx).coerceIn(0f, corners.topRight.x - 0.05f),
+                                        (corners.topLeft.y + dy).coerceIn(0f, corners.bottomLeft.y - 0.05f)
                                     )
                                 )
-                                "TR" -> cropCorners.copy(
+                                "TR" -> corners.copy(
                                     topRight = Offset(
-                                        (cropCorners.topRight.x + dx).coerceIn(cropCorners.topLeft.x + 0.05f, 1f),
-                                        (cropCorners.topRight.y + dy).coerceIn(0f, cropCorners.bottomRight.y - 0.05f)
+                                        (corners.topRight.x + dx).coerceIn(corners.topLeft.x + 0.05f, 1f),
+                                        (corners.topRight.y + dy).coerceIn(0f, corners.bottomRight.y - 0.05f)
                                     )
                                 )
-                                "BR" -> cropCorners.copy(
+                                "BR" -> corners.copy(
                                     bottomRight = Offset(
-                                        (cropCorners.bottomRight.x + dx).coerceIn(cropCorners.bottomLeft.x + 0.05f, 1f),
-                                        (cropCorners.bottomRight.y + dy).coerceIn(cropCorners.topRight.y + 0.05f, 1f)
+                                        (corners.bottomRight.x + dx).coerceIn(corners.bottomLeft.x + 0.05f, 1f),
+                                        (corners.bottomRight.y + dy).coerceIn(corners.topRight.y + 0.05f, 1f)
                                     )
                                 )
-                                "BL" -> cropCorners.copy(
+                                "BL" -> corners.copy(
                                     bottomLeft = Offset(
-                                        (cropCorners.bottomLeft.x + dx).coerceIn(0f, cropCorners.bottomRight.x - 0.05f),
-                                        (cropCorners.bottomLeft.y + dy).coerceIn(cropCorners.topLeft.y + 0.05f, 1f)
+                                        (corners.bottomLeft.x + dx).coerceIn(0f, corners.bottomRight.x - 0.05f),
+                                        (corners.bottomLeft.y + dy).coerceIn(corners.topLeft.y + 0.05f, 1f)
                                     )
                                 )
-                                else -> cropCorners
+                                else -> corners
                             }
 
-                            onCornersChanged(newCorners)
+                            currentOnCornersChanged(newCorners)
                         }
                     )
                 }
@@ -99,20 +106,16 @@ fun CropOverlay(
             val width = size.width
             val height = size.height
 
-            val tl = Offset(cropCorners.topLeft.x * width, cropCorners.topLeft.y * height)
-            val tr = Offset(cropCorners.topRight.x * width, cropCorners.topRight.y * height)
-            val br = Offset(cropCorners.bottomRight.x * width, cropCorners.bottomRight.y * height)
-            val bl = Offset(cropCorners.bottomLeft.x * width, cropCorners.bottomLeft.y * height)
+            val corners = currentCropCorners
+            val tl = Offset(corners.topLeft.x * width, corners.topLeft.y * height)
+            val tr = Offset(corners.topRight.x * width, corners.topRight.y * height)
+            val br = Offset(corners.bottomRight.x * width, corners.bottomRight.y * height)
+            val bl = Offset(corners.bottomLeft.x * width, corners.bottomLeft.y * height)
 
-            // Outer dimmed overlay path
-            val outerPath = Path().apply {
-                moveTo(0f, 0f)
-                lineTo(width, 0f)
-                lineTo(width, height)
-                lineTo(0f, height)
-                close()
+            val fullPath = Path().apply {
+                addRect(Rect(0f, 0f, width, height))
             }
-            val innerPath = Path().apply {
+            val cropPath = Path().apply {
                 moveTo(tl.x, tl.y)
                 lineTo(tr.x, tr.y)
                 lineTo(br.x, br.y)
@@ -120,39 +123,34 @@ fun CropOverlay(
                 close()
             }
 
-            drawPath(outerPath, Color.Black.copy(alpha = 0.45f))
-            drawPath(innerPath, Color.Transparent)
+            val overlayPath = Path.combine(
+                PathOperation.Difference,
+                fullPath,
+                cropPath
+            )
 
-            // Quad bounding box crop outline
+            drawPath(overlayPath, Color.Black.copy(alpha = 0.5f))
+
             drawPath(
-                path = innerPath,
+                path = cropPath,
                 color = CyanPrimary,
                 style = Stroke(width = 3.dp.toPx())
             )
 
-            // Draw Corner handles
             val handleRadius = 14.dp.toPx()
-            val handleColor = CyanPrimary
-            val activeColor = Color.White
-
-            val points = listOf(
-                "TL" to tl,
-                "TR" to tr,
-                "BR" to br,
-                "BL" to bl
-            )
+            val points = listOf("TL" to tl, "TR" to tr, "BR" to br, "BL" to bl)
 
             points.forEach { (name, point) ->
                 val isActive = activeHandle == name
                 val currentRadius = if (isActive) handleRadius * 1.3f else handleRadius
 
                 drawCircle(
-                    color = if (isActive) activeColor else handleColor,
+                    color = if (isActive) Color.White else CyanPrimary,
                     radius = currentRadius,
                     center = point
                 )
                 drawCircle(
-                    color = Color.Black.copy(alpha = 0.3f),
+                    color = Color.Black.copy(alpha = 0.4f),
                     radius = currentRadius + 2.dp.toPx(),
                     center = point,
                     style = Stroke(width = 1.5.dp.toPx())
@@ -161,3 +159,4 @@ fun CropOverlay(
         }
     }
 }
+
