@@ -2,92 +2,148 @@ package com.example.ui.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+
+private enum class Corner { TOP_LEFT, TOP_RIGHT, BOTTOM_RIGHT, BOTTOM_LEFT }
 
 @Composable
 fun CropOverlay(
-    modifier: Modifier = Modifier,
-    cropRect: Rect? = null,
-    onCropRectChanged: ((Rect) -> Unit)? = null,
-    points: List<Offset>? = null,
-    onPointsChanged: ((List<Offset>) -> Unit)? = null,
-    overlayColor: Color = Color.Black.copy(alpha = 0.55f),
-    borderColor: Color = Color.White,
-    borderWidth: Dp = 2.dp,
-    gridColor: Color = Color.White.copy(alpha = 0.4f)
+    cropCorners: CropCorners,
+    onCornersChanged: (CropCorners) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
-    val borderPx = with(density) { borderWidth.toPx() }
+    val cyan = remember { Color(0xFF00E5FF) }
+    val dimColor = remember { Color.Black.copy(alpha = 0.62f) }
+    val touchRadiusPx = with(density) { 44.dp.toPx() }
+    val outerRadiusPx = with(density) { 14.dp.toPx() }
+    val innerRadiusPx = with(density) { 6.5.dp.toPx() }
+    val bracketLenPx = with(density) { 28.dp.toPx() }
+    val bracketThickPx = with(density) { 4.dp.toPx() }
+    val bracketThickWhitePx = with(density) { 6.5.dp.toPx() }
+    val minSep = 0.12f
 
-    var internalRect by remember { mutableStateOf(cropRect ?: Rect.Zero) }
-    var internalPoints by remember { mutableStateOf(points) }
+    var draggingCorner by remember { mutableStateOf<Corner?>(null) }
+    val currentCorners = rememberUpdatedState(cropCorners)
+    val callback = rememberUpdatedState(onCornersChanged)
 
-    // Update from outside
-    LaunchedEffect(cropRect) { if (cropRect != null) internalRect = cropRect }
-    LaunchedEffect(points) { if (points != null) internalPoints = points }
-
-    Canvas(modifier = modifier
-        .fillMaxSize()
-        .pointerInput(Unit) {
-            detectDragGestures { change, dragAmount ->
-                change.consume()
-                // Simple move logic for Rect mode
-                if (internalRect != Rect.Zero) {
-                    val newRect = internalRect.translate(dragAmount)
-                    internalRect = newRect
-                    onCropRectChanged?.invoke(newRect)
-                }
+    fun constrain(new: Offset, type: Corner, existing: CropCorners): Offset {
+        var x = new.x.coerceIn(0f, 1f)
+        var y = new.y.coerceIn(0f, 1f)
+        when (type) {
+            Corner.TOP_LEFT -> {
+                x = x.coerceIn(0f, minOf(existing.topRight.x, existing.bottomRight.x) - minSep)
+                y = y.coerceIn(0f, minOf(existing.bottomLeft.y, existing.bottomRight.y) - minSep)
+            }
+            Corner.TOP_RIGHT -> {
+                x = x.coerceIn(maxOf(existing.topLeft.x, existing.bottomLeft.x) + minSep, 1f)
+                y = y.coerceIn(0f, minOf(existing.bottomLeft.y, existing.bottomRight.y) - minSep)
+            }
+            Corner.BOTTOM_RIGHT -> {
+                x = x.coerceIn(maxOf(existing.bottomLeft.x, existing.topLeft.x) + minSep, 1f)
+                y = y.coerceIn(maxOf(existing.topLeft.y, existing.topRight.y) + minSep, 1f)
+            }
+            Corner.BOTTOM_LEFT -> {
+                x = x.coerceIn(0f, minOf(existing.bottomRight.x, existing.topRight.x) - minSep)
+                y = y.coerceIn(maxOf(existing.topLeft.y, existing.topRight.y) + minSep, 1f)
             }
         }
+        return Offset(x, y)
+    }
+
+    Canvas(
+        modifier = modifier.pointerInput(Unit) {
+            detectDragGestures(
+                onDragStart = { pos ->
+                    val w = size.width.toFloat()
+                    val h = size.height.toFloat()
+                    val c = currentCorners.value
+                    val tl = Offset(c.topLeft.x * w, c.topLeft.y * h)
+                    val tr = Offset(c.topRight.x * w, c.topRight.y * h)
+                    val br = Offset(c.bottomRight.x * w, c.bottomRight.y * h)
+                    val bl = Offset(c.bottomLeft.x * w, c.bottomLeft.y * h)
+                    val dTL = (pos - tl).getDistance()
+                    val dTR = (pos - tr).getDistance()
+                    val dBR = (pos - br).getDistance()
+                    val dBL = (pos - bl).getDistance()
+                    val min = minOf(dTL, dTR, dBR, dBL)
+                    if (min > touchRadiusPx) return@detectDragGestures
+                    draggingCorner = when (min) {
+                        dTL -> Corner.TOP_LEFT
+                        dTR -> Corner.TOP_RIGHT
+                        dBR -> Corner.BOTTOM_RIGHT
+                        else -> Corner.BOTTOM_LEFT
+                    }
+                },
+                onDragEnd = { draggingCorner = null },
+                onDragCancel = { draggingCorner = null },
+                onDrag = { change, _ ->
+                    change.consume()
+                    val type = draggingCorner ?: return@detectDragGestures
+                    val w = size.width.toFloat()
+                    val h = size.height.toFloat()
+                    val norm = Offset((change.position.x / w).coerceIn(0f, 1f), (change.position.y / h).coerceIn(0f, 1f))
+                    val constrained = constrain(norm, type, currentCorners.value)
+                    val newCorners = when (type) {
+                        Corner.TOP_LEFT -> currentCorners.value.copy(topLeft = constrained)
+                        Corner.TOP_RIGHT -> currentCorners.value.copy(topRight = constrained)
+                        Corner.BOTTOM_RIGHT -> currentCorners.value.copy(bottomRight = constrained)
+                        Corner.BOTTOM_LEFT -> currentCorners.value.copy(bottomLeft = constrained)
+                    }
+                    callback.value(newCorners)
+                }
+            )
+        }
     ) {
-        val activeRect = internalRect
-        val rectToDraw = if (activeRect == Rect.Zero) {
-            // first time init - center 80%
-            val pad = size.width * 0.1f
-            Rect(Offset(pad, pad), Size(size.width - pad * 2, size.height - pad * 2))
-        } else activeRect
+        val w = size.width
+        val h = size.height
+        val tl = Offset(cropCorners.topLeft.x * w, cropCorners.topLeft.y * h)
+        val tr = Offset(cropCorners.topRight.x * w, cropCorners.topRight.y * h)
+        val br = Offset(cropCorners.bottomRight.x * w, cropCorners.bottomRight.y * h)
+        val bl = Offset(cropCorners.bottomLeft.x * w, cropCorners.bottomLeft.y * h)
 
-        if (internalRect == Rect.Zero) {
-            internalRect = rectToDraw
+        val dimPath = Path().apply {
+            fillType = PathFillType.EvenOdd
+            addRect(Rect(Offset.Zero, Size(w, h)))
+            moveTo(tl.x, tl.y); lineTo(tr.x, tr.y); lineTo(br.x, br.y); lineTo(bl.x, bl.y); close()
         }
+        drawPath(dimPath, dimColor)
 
-        // 1. Dim outside area
-        drawRect(color = overlayColor, size = Size(size.width, rectToDraw.top))
-        drawRect(color = overlayColor, topLeft = Offset(0f, rectToDraw.top), size = Size(rectToDraw.left, rectToDraw.height))
-        drawRect(color = overlayColor, topLeft = Offset(rectToDraw.right, rectToDraw.top), size = Size(size.width - rectToDraw.right, rectToDraw.height))
-        drawRect(color = overlayColor, topLeft = Offset(0f, rectToDraw.bottom), size = Size(size.width, size.height - rectToDraw.bottom))
-
-        // 2. Border
-        drawRect(
-            color = borderColor,
-            topLeft = rectToDraw.topLeft,
-            size = rectToDraw.size,
-            style = Stroke(width = borderPx)
-        )
-
-        // 3. Grid - rule of thirds
-        val thirdW = rectToDraw.width / 3
-        val thirdH = rectToDraw.height / 3
-        for (i in 1..2) {
-            drawLine(gridColor, Offset(rectToDraw.left + thirdW * i, rectToDraw.top), Offset(rectToDraw.left + thirdW * i, rectToDraw.bottom), strokeWidth = 1f)
-            drawLine(gridColor, Offset(rectToDraw.left, rectToDraw.top + thirdH * i), Offset(rectToDraw.right, rectToDraw.top + thirdH * i), strokeWidth = 1f)
+        val borderPath = Path().apply {
+            moveTo(tl.x, tl.y); lineTo(tr.x, tr.y); lineTo(br.x, br.y); lineTo(bl.x, bl.y); close()
         }
+        drawPath(borderPath, Color.White.copy(alpha = 0.9f), style = Stroke(bracketThickWhitePx, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(borderPath, cyan, style = Stroke(bracketThickPx, cap = StrokeCap.Round, join = StrokeJoin.Round))
 
-        // 4. Corner handles
-        val handleSize = 16.dp.toPx()
-        listOf(rectToDraw.topLeft, rectToDraw.topRight, rectToDraw.bottomLeft, rectToDraw.bottomRight).forEach {
-            drawRect(color = borderColor, topLeft = Offset(it.x - handleSize / 2, it.y - handleSize / 2), size = Size(handleSize, handleSize))
+        fun drawHandle(p: Offset, type: Corner) {
+            val hx = if (type == Corner.TOP_LEFT || type == Corner.BOTTOM_LEFT) 1f else -1f
+            val vy = if (type == Corner.TOP_LEFT || type == Corner.TOP_RIGHT) 1f else -1f
+            val hEnd = Offset(p.x + hx * bracketLenPx, p.y)
+            val vEnd = Offset(p.x, p.y + vy * bracketLenPx)
+            drawLine(Color.White, p, hEnd, bracketThickWhitePx, StrokeCap.Round)
+            drawLine(Color.White, p, vEnd, bracketThickWhitePx, StrokeCap.Round)
+            drawLine(cyan, p, hEnd, bracketThickPx, StrokeCap.Round)
+            drawLine(cyan, p, vEnd, bracketThickPx, StrokeCap.Round)
+            drawCircle(Color.Black.copy(alpha = 0.25f), outerRadiusPx + 5.dp.toPx(), p)
+            drawCircle(Color.White, outerRadiusPx, p)
+            drawCircle(cyan, innerRadiusPx, p)
         }
+        drawHandle(tl, Corner.TOP_LEFT)
+        drawHandle(tr, Corner.TOP_RIGHT)
+        drawHandle(br, Corner.BOTTOM_RIGHT)
+        drawHandle(bl, Corner.BOTTOM_LEFT)
     }
 }
