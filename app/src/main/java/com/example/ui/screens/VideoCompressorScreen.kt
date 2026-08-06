@@ -195,7 +195,7 @@ fun VideoCompressorScreen(
                 val file = FileUtil.getFileFromUri(context, uri)
                 if (file != null && file.exists()) {
                     val details = VideoTranscoder.getVideoDetails(context, file)
-                    val name = file.name.takeIf { it.isNotBlank() && it != "temp_media_.tmp" } ?: "Video_${System.currentTimeMillis()}.mp4"
+                    val originalName = FileUtil.getFileNameFromUri(context, uri)
 
                     // Extract frame thumbnail
                     var thumbnail: Bitmap? = null
@@ -213,7 +213,7 @@ fun VideoCompressorScreen(
 
                     withContext(Dispatchers.Main) {
                         selectedVideoFile = file
-                        videoTitle = name
+                        videoTitle = originalName
                         videoResolution = details.formattedResolution
                         videoDuration = details.formattedDuration
                         originalSizeBytes = file.length()
@@ -223,7 +223,7 @@ fun VideoCompressorScreen(
                         compressedFile = null
                         savedVideoUri = null
 
-                        snackbarHostState.showSnackbar("Video loaded: $name (${details.formattedSize})")
+                        snackbarHostState.showSnackbar("Video loaded: $originalName (${details.formattedSize})")
                     }
                 } else {
                     withContext(Dispatchers.Main) {
