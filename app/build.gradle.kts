@@ -1,5 +1,4 @@
-// import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
-
+// MuftTools Offline App Build Configuration - Updated for release build
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.kotlin.android)
