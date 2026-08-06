@@ -371,12 +371,10 @@ fun ImageToolsScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .widthIn(max = 600.dp)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
 
-                // 1. Image Preview Box (Dashed Empty State OR Interactive Split Viewer)
+                // 1. Image Preview Box (Fixed at top)
                 Card(
                     colors = CardDefaults.cardColors(containerColor = SurfaceCardBg),
                     shape = RoundedCornerShape(18.dp),
@@ -387,7 +385,7 @@ fun ImageToolsScreen(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(280.dp)
+                            .height(240.dp)
                             .clip(RoundedCornerShape(18.dp))
                     ) {
                         if (originalBitmap == null) {
@@ -473,7 +471,9 @@ fun ImageToolsScreen(
                     }
                 }
 
-                // 2. Toolbar Action Buttons Bar (5 Mode Options right below preview)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 2. Toolbar Action Buttons Bar (Fixed right below preview)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -514,6 +514,17 @@ fun ImageToolsScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Scrollable Lower Content Section (Image Info, tool settings, Quality slider, Save & Share)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
 
                 // 3. Image Info Card (Matching Reference Layout)
                 Card(
@@ -1001,9 +1012,13 @@ fun ImageToolsScreen(
                         )
                     }
                 }
+
+                // Generous bottom space so Save and Share buttons are never obscured by bottom bar
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }
+}
 }
 
 // Custom Interactive Tool Mode Item Button
