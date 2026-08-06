@@ -104,7 +104,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -180,6 +182,7 @@ fun PdfScannerScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -278,7 +281,10 @@ fun PdfScannerScreen(
                 },
                 actions = {
                     if (screenState == ScannerScreenState.CAMERA || screenState == ScannerScreenState.EDIT_PAGES) {
-                        IconButton(onClick = { screenState = ScannerScreenState.HISTORY }) {
+                        IconButton(onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            screenState = ScannerScreenState.HISTORY
+                        }) {
                             Icon(
                                 imageVector = Icons.Filled.History,
                                 contentDescription = "History",
@@ -286,7 +292,10 @@ fun PdfScannerScreen(
                             )
                         }
                     }
-                    IconButton(onClick = onToggleFavorite) {
+                    IconButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onToggleFavorite()
+                    }) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                             contentDescription = "Favorite",

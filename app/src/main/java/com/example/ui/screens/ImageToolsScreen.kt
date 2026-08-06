@@ -103,8 +103,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -545,6 +547,7 @@ fun ImageToolsScreen(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -586,6 +589,7 @@ fun ImageToolsScreen(
 
     val performUndo: () -> Unit = {
         if (undoStack.isNotEmpty()) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             val current = editedBitmap ?: originalBitmap
             if (current != null) {
                 val newRedo = redoStack.toMutableList()
@@ -603,6 +607,7 @@ fun ImageToolsScreen(
 
     val performRedo: () -> Unit = {
         if (redoStack.isNotEmpty()) {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             val current = editedBitmap ?: originalBitmap
             if (current != null) {
                 val newUndo = undoStack.toMutableList()
@@ -787,6 +792,7 @@ fun ImageToolsScreen(
             withContext(Dispatchers.Main) {
                 if (uri != null) {
                     savedUri = uri
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     snackbarHostState.showSnackbar("Image saved successfully to Pictures/MuftTools!")
                     onSaved?.invoke(uri)
                 } else {
@@ -808,7 +814,10 @@ fun ImageToolsScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBackClick) {
+                    IconButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onBackClick()
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back",
@@ -839,7 +848,10 @@ fun ImageToolsScreen(
                             modifier = Modifier.size(22.dp)
                         )
                     }
-                    IconButton(onClick = { onToggleFavorite() }) {
+                    IconButton(onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onToggleFavorite()
+                    }) {
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Crown",
@@ -1061,35 +1073,50 @@ fun ImageToolsScreen(
                         icon = Icons.Default.Crop,
                         label = "Crop",
                         isSelected = activeToolMode == ToolMode.CROP,
-                        onClick = { activeToolMode = ToolMode.CROP },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            activeToolMode = ToolMode.CROP
+                        },
                         modifier = Modifier.weight(1f)
                     )
                     ToolModeItem(
                         icon = Icons.Default.AspectRatio,
                         label = "Resize",
                         isSelected = activeToolMode == ToolMode.RESIZE,
-                        onClick = { activeToolMode = ToolMode.RESIZE },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            activeToolMode = ToolMode.RESIZE
+                        },
                         modifier = Modifier.weight(1f)
                     )
                     ToolModeItem(
                         icon = Icons.Default.Download,
                         label = "Compress",
                         isSelected = activeToolMode == ToolMode.COMPRESS,
-                        onClick = { activeToolMode = ToolMode.COMPRESS },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            activeToolMode = ToolMode.COMPRESS
+                        },
                         modifier = Modifier.weight(1f)
                     )
                     ToolModeItem(
                         icon = Icons.Default.Refresh,
                         label = "Convert",
                         isSelected = activeToolMode == ToolMode.CONVERT,
-                        onClick = { activeToolMode = ToolMode.CONVERT },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            activeToolMode = ToolMode.CONVERT
+                        },
                         modifier = Modifier.weight(1f)
                     )
                     ToolModeItem(
                         icon = Icons.Default.RotateRight,
                         label = "Rotate",
                         isSelected = activeToolMode == ToolMode.ROTATE,
-                        onClick = { activeToolMode = ToolMode.ROTATE },
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            activeToolMode = ToolMode.ROTATE
+                        },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -1310,7 +1337,10 @@ fun ImageToolsScreen(
                                             modifier = Modifier
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(if (isSel) PurplePrimary else Color(0xFF201A38))
-                                                .clickable { selectedCropRatio = ratio }
+                                                .clickable {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    selectedCropRatio = ratio
+                                                }
                                                 .padding(horizontal = 14.dp, vertical = 8.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
@@ -1331,6 +1361,7 @@ fun ImageToolsScreen(
                                 ) {
                                     Button(
                                         onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                             val cr = currentCropRect
                                             val ir = currentImageRect
                                             val srcBmp = editedBitmap ?: originalBitmap
@@ -1368,6 +1399,7 @@ fun ImageToolsScreen(
 
                                     Button(
                                         onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             if (originalBitmap != null) {
                                                 if (editedBitmap != null && editedBitmap != originalBitmap) {
                                                     pushToUndo(editedBitmap)
@@ -1407,6 +1439,7 @@ fun ImageToolsScreen(
                                                 .clip(RoundedCornerShape(8.dp))
                                                 .background(if (isSel) PurplePrimary else Color(0xFF201A38))
                                                 .clickable {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                     originalBitmap?.let { bmp ->
                                                         val src = editedBitmap ?: bmp
                                                         val nw = (bmp.width * pct / 100).coerceAtLeast(10)
@@ -1480,6 +1513,7 @@ fun ImageToolsScreen(
 
                                 Button(
                                     onClick = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         val src = editedBitmap ?: originalBitmap
                                         val w = targetWidthStr.toIntOrNull()
                                         val h = targetHeightStr.toIntOrNull()
@@ -1521,7 +1555,10 @@ fun ImageToolsScreen(
                                                 .weight(1f)
                                                 .clip(RoundedCornerShape(10.dp))
                                                 .background(if (isSel) PurplePrimary else Color(0xFF201A38))
-                                                .clickable { targetFormat = fmt }
+                                                .clickable {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                    targetFormat = fmt
+                                                }
                                                 .padding(vertical = 12.dp),
                                             contentAlignment = Alignment.Center
                                         ) {
@@ -1548,6 +1585,7 @@ fun ImageToolsScreen(
                                 ) {
                                     Button(
                                         onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             val src = editedBitmap ?: originalBitmap
                                             src?.let { bmp ->
                                                 pushToUndo(bmp)
@@ -1569,6 +1607,7 @@ fun ImageToolsScreen(
 
                                     Button(
                                         onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             val src = editedBitmap ?: originalBitmap
                                             src?.let { bmp ->
                                                 pushToUndo(bmp)
@@ -1586,6 +1625,7 @@ fun ImageToolsScreen(
 
                                     Button(
                                         onClick = {
+                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                             val src = editedBitmap ?: originalBitmap
                                             src?.let { bmp ->
                                                 pushToUndo(bmp)

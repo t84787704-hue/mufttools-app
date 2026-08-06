@@ -72,6 +72,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -96,6 +98,7 @@ fun HomeScreen(
     onToolClick: (ToolItem) -> Unit,
     onNavigateSettings: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     val searchQuery by viewModel.searchQuery.collectAsState()
     val filteredTools by viewModel.filteredTools.collectAsState()
     val selectedCategory by viewModel.selectedCategory.collectAsState()
@@ -118,6 +121,7 @@ fun HomeScreen(
                 NavigationBarItem(
                     selected = selectedNavIndex == 0,
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         viewModel.selectNavIndex(0)
                         viewModel.onCategorySelected("All")
                     },
@@ -140,6 +144,7 @@ fun HomeScreen(
                 NavigationBarItem(
                     selected = selectedNavIndex == 1,
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         viewModel.selectNavIndex(1)
                         viewModel.onCategorySelected("Favorites")
                     },
@@ -162,6 +167,7 @@ fun HomeScreen(
                 NavigationBarItem(
                     selected = selectedNavIndex == 2,
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         viewModel.selectNavIndex(2)
                         onNavigateSettings()
                     },
@@ -342,6 +348,7 @@ fun HomeScreen(
                                 .height(36.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .clickable {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                     viewModel.onCategorySelected(category)
                                     if (category == "Favorites") {
                                         viewModel.selectNavIndex(1)
@@ -467,6 +474,7 @@ fun ToolCardItem(
     onToggleFavorite: () -> Unit,
     onToolClick: () -> Unit
 ) {
+    val haptic = LocalHapticFeedback.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -479,7 +487,10 @@ fun ToolCardItem(
                 ),
                 RoundedCornerShape(20.dp)
             )
-            .clickable(onClick = onToolClick),
+            .clickable {
+                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                onToolClick()
+            },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = DarkSurface)
     ) {
@@ -512,7 +523,10 @@ fun ToolCardItem(
                     }
 
                     IconButton(
-                        onClick = onToggleFavorite,
+                        onClick = {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onToggleFavorite()
+                        },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
