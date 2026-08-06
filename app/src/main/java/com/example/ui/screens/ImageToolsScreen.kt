@@ -194,6 +194,31 @@ fun ImageToolsScreen(
         }
     }
 
+    val launchCameraSafely = {
+        val uri = FileUtil.createTempImageUri(context)
+        if (uri != null) {
+            tempCameraUri = uri
+            try {
+                cameraLauncher.launch(uri)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                scope.launch { snackbarHostState.showSnackbar("Camera application not available.") }
+            }
+        } else {
+            scope.launch { snackbarHostState.showSnackbar("Could not initialize camera storage.") }
+        }
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            launchCameraSafely()
+        } else {
+            scope.launch { snackbarHostState.showSnackbar("Camera permission is required to take photos.") }
+        }
+    }
+
     // Gallery Picker launcher setup
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -442,9 +467,16 @@ fun ImageToolsScreen(
 
                                         Button(
                                             onClick = {
-                                                val uri = FileUtil.createTempImageUri(context)
-                                                tempCameraUri = uri
-                                                cameraLauncher.launch(uri)
+                                                val hasPermission = androidx.core.content.ContextCompat.checkSelfPermission(
+                                                    context,
+                                                    android.Manifest.permission.CAMERA
+                                                ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+                                                if (hasPermission) {
+                                                    launchCameraSafely()
+                                                } else {
+                                                    cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+                                                }
                                             },
                                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF282046)),
                                             shape = RoundedCornerShape(12.dp),

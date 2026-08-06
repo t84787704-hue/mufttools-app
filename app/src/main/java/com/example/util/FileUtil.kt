@@ -48,13 +48,18 @@ object FileUtil {
         }
     }
 
-    fun createTempImageUri(context: Context): Uri {
-        val tempFile = File.createTempFile("camera_capture_", ".jpg", context.cacheDir)
-        return FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            tempFile
-        )
+    fun createTempImageUri(context: Context): Uri? {
+        return try {
+            val tempFile = File.createTempFile("camera_capture_", ".jpg", context.cacheDir)
+            FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                tempFile
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 
     fun getFileFromUri(context: Context, uri: Uri): File? {
