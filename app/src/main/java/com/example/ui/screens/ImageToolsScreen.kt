@@ -460,11 +460,14 @@ fun ImageToolsScreen(
                                 }
                             }
                         } else {
-                            // Split Before / After Viewer
-                            SplitBeforeAfterImageViewer(
-                                originalBitmap = originalBitmap!!,
-                                editedBitmap = editedBitmap ?: originalBitmap!!,
-                                onReSelectImage = { galleryLauncher.launch("image/*") }
+                            // Single Image Preview (shows the currently edited or loaded picture)
+                            Image(
+                                bitmap = (editedBitmap ?: originalBitmap!!).asImageBitmap(),
+                                contentDescription = "Selected Image",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { galleryLauncher.launch("image/*") },
+                                contentScale = ContentScale.Fit
                             )
                         }
                     }
@@ -1037,63 +1040,6 @@ private fun ToolModeItem(
             color = if (isSelected) Color.White else TextSecondary,
             fontSize = 11.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-        )
-    }
-}
-
-// Split Before / After Image Viewer Composable with Smooth Draggable Divider
-@Composable
-private fun SplitBeforeAfterImageViewer(
-    originalBitmap: Bitmap,
-    editedBitmap: Bitmap,
-    onReSelectImage: () -> Unit
-) {
-    var splitRatio by remember { mutableFloatStateOf(0.5f) }
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {
-                detectHorizontalDragGestures { _, dragAmount ->
-                    val newRatio = (splitRatio + dragAmount / size.width).coerceIn(0.05f, 0.95f)
-                    splitRatio = newRatio
-                }
-            }
-            .clickable { onReSelectImage() }
-    ) {
-        val widthPx = constraints.maxWidth.toFloat()
-
-        // Full Image (Edited Version)
-        Image(
-            bitmap = editedBitmap.asImageBitmap(),
-            contentDescription = "After Image",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
-
-        // Clipped Left Side Image (Original Version)
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .fillMaxWidth(fraction = splitRatio)
-                .clip(RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp))
-        ) {
-            Image(
-                bitmap = originalBitmap.asImageBitmap(),
-                contentDescription = "Before Image",
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
-
-        // Draggable Vertical Divider Line
-        val xOffset = with(LocalDensity.current) { (widthPx * splitRatio).toDp() }
-        Box(
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(2.5.dp)
-                .offset(x = xOffset)
-                .background(Color.White)
         )
     }
 }
