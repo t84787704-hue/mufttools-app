@@ -5,6 +5,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -23,6 +24,7 @@ import com.example.ui.screens.TermsScreen
 import com.example.ui.screens.VideoCompressorScreen
 import com.example.ui.theme.MuftToolsTheme
 import com.example.viewmodel.HomeViewModel
+import com.example.viewmodel.ThemeMode
 
 class MainActivity : ComponentActivity() {
 
@@ -37,7 +39,14 @@ class MainActivity : ComponentActivity() {
         }
         enableEdgeToEdge()
         setContent {
-            MuftToolsTheme {
+            val themeMode by homeViewModel.themeMode.collectAsState()
+            val isDarkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+
+            MuftToolsTheme(darkTheme = isDarkTheme) {
                 val navController = rememberNavController()
                 MuftToolsNavGraph(
                     navController = navController,
@@ -73,6 +82,7 @@ fun MuftToolsNavGraph(
 
         composable("settings") {
             SettingsScreen(
+                viewModel = viewModel,
                 onNavigatePrivacy = { navController.navigate("privacy_policy") },
                 onNavigateTerms = { navController.navigate("terms_of_use") },
                 onNavigateAbout = { navController.navigate("about_us") }

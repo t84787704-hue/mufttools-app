@@ -76,17 +76,31 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.Brightness4
+import androidx.compose.material.icons.filled.Brightness7
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.example.ui.theme.CardBorder
+import com.example.viewmodel.HomeViewModel
+import com.example.viewmodel.ThemeMode
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    viewModel: HomeViewModel,
     onNavigatePrivacy: () -> Unit,
     onNavigateTerms: () -> Unit,
     onNavigateAbout: () -> Unit
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    val currentThemeMode by viewModel.themeMode.collectAsState()
     var cacheSizeStr by remember { mutableStateOf(getCacheSize(context)) }
 
     Scaffold(
@@ -183,6 +197,89 @@ fun SettingsScreen(
                             text = "100% Offline • 100% Ad-Free • Private Processing",
                             style = MaterialTheme.typography.bodySmall,
                             color = TextSecondary
+                        )
+                    }
+                }
+            }
+
+            // Appearance & Theme Section
+            SectionTitle("Appearance & Theme")
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, CardBorder, RoundedCornerShape(20.dp)),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkSurface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(CyanPrimary.copy(alpha = 0.15f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Palette,
+                                contentDescription = "Theme",
+                                modifier = Modifier.size(20.dp),
+                                tint = CyanPrimary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "App Theme",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Choose between Light, Dark, or System Default",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ThemeOptionChip(
+                            title = "System",
+                            icon = Icons.Default.Brightness4,
+                            isSelected = currentThemeMode == ThemeMode.SYSTEM,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.setThemeMode(ThemeMode.SYSTEM)
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ThemeOptionChip(
+                            title = "Light",
+                            icon = Icons.Default.Brightness7,
+                            isSelected = currentThemeMode == ThemeMode.LIGHT,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.setThemeMode(ThemeMode.LIGHT)
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        ThemeOptionChip(
+                            title = "Dark",
+                            icon = Icons.Default.Brightness4,
+                            isSelected = currentThemeMode == ThemeMode.DARK,
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                viewModel.setThemeMode(ThemeMode.DARK)
+                            },
+                            modifier = Modifier.weight(1f)
                         )
                     }
                 }
@@ -429,5 +526,46 @@ private fun clearAppCache(context: Context) {
         }
     } catch (e: Exception) {
         e.printStackTrace()
+    }
+}
+
+@Composable
+private fun ThemeOptionChip(
+    title: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        color = if (isSelected) CyanPrimary.copy(alpha = 0.2f) else DarkSurfaceVariant,
+        border = BorderStroke(
+            1.dp,
+            if (isSelected) CyanPrimary else Color.Transparent
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(16.dp),
+                tint = if (isSelected) CyanPrimary else TextSecondary
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) CyanPrimary else TextPrimary
+            )
+        }
     }
 }

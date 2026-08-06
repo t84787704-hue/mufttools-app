@@ -3,12 +3,18 @@ package com.example.ui.theme
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
@@ -22,31 +28,62 @@ private fun Context.findActivity(): Activity? {
 }
 
 private val MuftToolsDarkColorScheme = darkColorScheme(
-    primary = CyanPrimary,
-    onPrimary = DarkBackground,
-    primaryContainer = DarkSurfaceVariant,
-    onPrimaryContainer = TextPrimary,
+    primary = CyanPrimaryDark,
+    onPrimary = DarkBackgroundStatic,
+    primaryContainer = DarkSurfaceVariantStatic,
+    onPrimaryContainer = DarkTextPrimaryStatic,
     secondary = VioletSecondary,
-    onSecondary = TextPrimary,
-    secondaryContainer = DarkSurfaceVariant,
-    onSecondaryContainer = TextPrimary,
+    onSecondary = DarkTextPrimaryStatic,
+    secondaryContainer = DarkSurfaceVariantStatic,
+    onSecondaryContainer = DarkTextPrimaryStatic,
     tertiary = EmeraldTertiary,
-    onTertiary = DarkBackground,
-    background = DarkBackground,
-    onBackground = TextPrimary,
-    surface = DarkSurface,
-    onSurface = TextPrimary,
-    surfaceVariant = DarkSurfaceVariant,
-    onSurfaceVariant = TextSecondary,
-    outline = CardBorder
+    onTertiary = DarkBackgroundStatic,
+    background = DarkBackgroundStatic,
+    onBackground = DarkTextPrimaryStatic,
+    surface = DarkSurfaceStatic,
+    onSurface = DarkTextPrimaryStatic,
+    surfaceVariant = DarkSurfaceVariantStatic,
+    onSurfaceVariant = DarkTextSecondaryStatic,
+    outline = DarkTextMutedStatic,
+    outlineVariant = DarkCardBorderStatic
+)
+
+private val MuftToolsLightColorScheme = lightColorScheme(
+    primary = CyanPrimary,
+    onPrimary = Color.White,
+    primaryContainer = LightSurfaceVariantStatic,
+    onPrimaryContainer = LightTextPrimaryStatic,
+    secondary = VioletSecondary,
+    onSecondary = Color.White,
+    secondaryContainer = LightSurfaceVariantStatic,
+    onSecondaryContainer = LightTextPrimaryStatic,
+    tertiary = EmeraldTertiary,
+    onTertiary = Color.White,
+    background = LightBackgroundStatic,
+    onBackground = LightTextPrimaryStatic,
+    surface = LightSurfaceStatic,
+    onSurface = LightTextPrimaryStatic,
+    surfaceVariant = LightSurfaceVariantStatic,
+    onSurfaceVariant = LightTextSecondaryStatic,
+    outline = LightTextMutedStatic,
+    outlineVariant = LightCardBorderStatic
 )
 
 @Composable
 fun MuftToolsTheme(
-    darkTheme: Boolean = true, // Default to Material 3 Dark theme
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = MuftToolsDarkColorScheme
+    val context = LocalContext.current
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        darkTheme -> MuftToolsDarkColorScheme
+        else -> MuftToolsLightColorScheme
+    }
+
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -55,12 +92,12 @@ fun MuftToolsTheme(
                 if (activity != null) {
                     val window = activity.window
                     @Suppress("DEPRECATION")
-                    window.statusBarColor = DarkBackground.toArgb()
+                    window.statusBarColor = colorScheme.background.toArgb()
                     @Suppress("DEPRECATION")
-                    window.navigationBarColor = DarkBackground.toArgb()
+                    window.navigationBarColor = colorScheme.background.toArgb()
                     WindowCompat.getInsetsController(window, view).apply {
-                        isAppearanceLightStatusBars = false
-                        isAppearanceLightNavigationBars = false
+                        isAppearanceLightStatusBars = !darkTheme
+                        isAppearanceLightNavigationBars = !darkTheme
                     }
                 }
             }
@@ -74,12 +111,13 @@ fun MuftToolsTheme(
     )
 }
 
-// Backward compatibility alias if needed
+// Backward compatibility alias
 @Composable
 fun MyApplicationTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    MuftToolsTheme(darkTheme = true, content = content)
+    MuftToolsTheme(darkTheme = darkTheme, dynamicColor = dynamicColor, content = content)
 }
+

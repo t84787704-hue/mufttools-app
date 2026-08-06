@@ -10,7 +10,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
+enum class ThemeMode {
+    SYSTEM, LIGHT, DARK
+}
+
 class HomeViewModel : ViewModel() {
+
+    private val _themeMode = MutableStateFlow(ThemeMode.SYSTEM)
+    val themeMode: StateFlow<ThemeMode> = _themeMode
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery
@@ -71,5 +78,9 @@ class HomeViewModel : ViewModel() {
 
     fun selectNavIndex(index: Int) {
         _selectedNavIndex.value = index
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
     }
 }
