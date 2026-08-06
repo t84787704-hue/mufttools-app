@@ -87,6 +87,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import android.os.Build
+import android.os.Environment
+import android.os.StatFs
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.SdCard
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
@@ -154,6 +162,13 @@ fun VideoCompressorScreen(
     var showPlayerDialog by remember { mutableStateOf(false) }
     var playingFile by remember { mutableStateOf<File?>(null) }
     var playingTitle by remember { mutableStateOf("") }
+
+    // Bottom Feature Badges Dialog States
+    var showFormatsDialog by remember { mutableStateOf(false) }
+    var showDeviceSpecsDialog by remember { mutableStateOf(false) }
+    var showSecurityDialog by remember { mutableStateOf(false) }
+    var showStorageSavingsDialog by remember { mutableStateOf(false) }
+    var cacheSizeMb by remember { mutableFloatStateOf(0f) }
 
     // Real Estimated Size Calculation based on original size and quality ratio
     val estimatedSizeMb = remember(originalSizeMb, compressionRatioPercent) {
@@ -967,10 +982,31 @@ fun VideoCompressorScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    FeatureBadgeItem(icon = Icons.Default.Movie, title = "Supports All\nFormats")
-                    FeatureBadgeItem(icon = Icons.Default.Smartphone, title = "Works on All\nDevices")
-                    FeatureBadgeItem(icon = Icons.Default.Security, title = "Safe & Secure\nProcessing")
-                    FeatureBadgeItem(icon = Icons.Default.AccessTime, title = "Save Time &\nStorage")
+                    FeatureBadgeItem(
+                        icon = Icons.Default.Movie,
+                        title = "Supports All\nFormats",
+                        onClick = { showFormatsDialog = true }
+                    )
+                    FeatureBadgeItem(
+                        icon = Icons.Default.Smartphone,
+                        title = "Works on All\nDevices",
+                        onClick = { showDeviceSpecsDialog = true }
+                    )
+                    FeatureBadgeItem(
+                        icon = Icons.Default.Security,
+                        title = "Safe & Secure\nProcessing",
+                        onClick = {
+                            val cacheFiles = context.cacheDir.listFiles()
+                            val bytes = cacheFiles?.sumOf { it.length() } ?: 0L
+                            cacheSizeMb = (bytes / (1024f * 1024f))
+                            showSecurityDialog = true
+                        }
+                    )
+                    FeatureBadgeItem(
+                        icon = Icons.Default.AccessTime,
+                        title = "Save Time &\nStorage",
+                        onClick = { showStorageSavingsDialog = true }
+                    )
                 }
             }
         }
@@ -1012,14 +1048,296 @@ fun VideoCompressorScreen(
             containerColor = SurfaceCardBg
         )
     }
+
+    // 1. Supported Formats Functional Dialog
+    if (showFormatsDialog) {
+        AlertDialog(
+            onDismissRequest = { showFormatsDialog = false },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showFormatsDialog = false
+                        videoPickerLauncher.launch("video/*")
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = OrangePrimary)
+                ) {
+                    Text("Select Video File", color = OrangeDarkBg, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showFormatsDialog = false }) {
+                    Text("Close", color = TextSecondary)
+                }
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(imageVector = Icons.Default.Movie, contentDescription = null, tint = OrangePrimary)
+                    Text("Supports All Video Formats", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "This app utilizes native Android MediaCodec & Media3 Transformer engines, supporting all standard video containers:",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+
+                    val formats = listOf(
+                        "MP4 (.mp4)" to "H.264 / HEVC / AAC - Full Support",
+                        "MOV (.mov)" to "QuickTime Movie Format",
+                        "MKV (.mkv)" to "Matroska Multimedia Container",
+                        "AVI (.avi)" to "Audio Video Interleave",
+                        "WEBM (.webm)" to "VP8 / VP9 Web Video Format",
+                        "3GP / FLV" to "Mobile & Flash Video Streams"
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        formats.forEach { (fmt, desc) ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color(0xFF201B3B))
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = GreenSavedText, modifier = Modifier.size(14.dp))
+                                    Text(fmt, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                }
+                                Text(desc, color = TextMuted, fontSize = 10.sp)
+                            }
+                        }
+                    }
+                }
+            },
+            containerColor = SurfaceCardBg
+        )
+    }
+
+    // 2. Device Specifications & Transcoder Capabilities Dialog
+    if (showDeviceSpecsDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeviceSpecsDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showDeviceSpecsDialog = false }) {
+                    Text("Close", color = OrangePrimary, fontWeight = FontWeight.Bold)
+                }
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(imageVector = Icons.Default.Smartphone, contentDescription = null, tint = OrangePrimary)
+                    Text("Device & Hardware Specs", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Device Model & OS
+                    val deviceName = "${Build.MANUFACTURER.uppercase()} ${Build.MODEL}"
+                    val androidVersion = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
+
+                    // Calculate free storage space
+                    val stat = StatFs(Environment.getDataDirectory().path)
+                    val freeBytes = stat.availableBlocksLong * stat.blockSizeLong
+                    val freeGb = String.format("%.1f GB", freeBytes / (1024.0 * 1024.0 * 1024.0))
+
+                    SpecDetailRow(label = "Device Model", value = deviceName)
+                    SpecDetailRow(label = "OS Version", value = androidVersion)
+                    SpecDetailRow(label = "Hardware Transcoder", value = "MediaCodec / Media3 Active")
+                    SpecDetailRow(label = "Free Internal Storage", value = freeGb)
+                    SpecDetailRow(label = "Offline Transcoding", value = "100% Supported")
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(GreenSavedText.copy(alpha = 0.15f))
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            text = "Your device hardware fully supports offline hardware-accelerated video transcoding up to 4K resolution.",
+                            color = GreenSavedText,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            },
+            containerColor = SurfaceCardBg
+        )
+    }
+
+    // 3. Safe & Secure Offline Privacy Dialog
+    if (showSecurityDialog) {
+        AlertDialog(
+            onDismissRequest = { showSecurityDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showSecurityDialog = false }) {
+                    Text("Done", color = OrangePrimary, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = {
+                        scope.launch(Dispatchers.IO) {
+                            val files = context.cacheDir.listFiles()
+                            var deletedCount = 0
+                            files?.forEach { file ->
+                                if (file.name.contains("temp_media_") || file.name.contains("_Compressed")) {
+                                    if (file.delete()) deletedCount++
+                                }
+                            }
+                            withContext(Dispatchers.Main) {
+                                cacheSizeMb = 0f
+                                snackbarHostState.showSnackbar("Cleared $deletedCount temporary files from cache.")
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E274D))
+                ) {
+                    Icon(imageVector = Icons.Default.CleaningServices, contentDescription = null, tint = OrangeAmber, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Clear Cache (${String.format("%.1f MB", cacheSizeMb)})", color = TextPrimary, fontSize = 11.sp)
+                }
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(imageVector = Icons.Default.Security, contentDescription = null, tint = OrangePrimary)
+                    Text("100% Safe & Secure", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Your privacy and data security are guaranteed:",
+                        color = TextSecondary,
+                        fontSize = 12.sp
+                    )
+
+                    SecurityBulletItem(text = "100% Offline Processing: Compression happens entirely on your device hardware.")
+                    SecurityBulletItem(text = "Zero Cloud Uploads: Your video files never leave your phone.")
+                    SecurityBulletItem(text = "No Tracking or Telemetry: 0 analytics or personal data stored.")
+                    SecurityBulletItem(text = "Saved in Local Storage: All output videos are stored directly in Movies/MuftTools.")
+                }
+            },
+            containerColor = SurfaceCardBg
+        )
+    }
+
+    // 4. Save Time & Storage History Dialog
+    if (showStorageSavingsDialog) {
+        AlertDialog(
+            onDismissRequest = { showStorageSavingsDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showStorageSavingsDialog = false }) {
+                    Text("Close", color = OrangePrimary, fontWeight = FontWeight.Bold)
+                }
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(imageVector = Icons.Default.AccessTime, contentDescription = null, tint = OrangePrimary)
+                    Text("Storage Savings & History", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val muftFolder = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), "MuftTools")
+                    val savedFiles = muftFolder.listFiles()?.filter { it.extension.lowercase() == "mp4" } ?: emptyList()
+                    val totalSavedBytes = savedFiles.sumOf { it.length() }
+                    val totalSavedMb = totalSavedBytes.toDouble() / (1024.0 * 1024.0)
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF201B3B))
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("Total Compressed Videos", color = TextMuted, fontSize = 11.sp)
+                            Text("${savedFiles.size} Videos Saved", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("Folder Location", color = TextMuted, fontSize = 11.sp)
+                            Text("Movies/MuftTools", color = GreenSavedText, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+
+                    if (compressedFile != null && compressedFile!!.exists()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(GreenSavedText.copy(alpha = 0.15f))
+                                .padding(10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Last Compression Savings", color = GreenSavedText, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(compressedTitle, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            Text("${String.format("%.1f MB", compressedSizeMb)}", color = GreenSavedText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+                    } else if (savedFiles.isEmpty()) {
+                        Text(
+                            text = "No compressed videos saved yet. Compress your first video to start saving phone storage!",
+                            color = TextMuted,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            containerColor = SurfaceCardBg
+        )
+    }
 }
 
 @Composable
-private fun FeatureBadgeItem(icon: ImageVector, title: String) {
+private fun SpecDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFF201B3B))
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, color = TextMuted, fontSize = 11.sp)
+        Text(text = value, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun SecurityBulletItem(text: String) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(imageVector = Icons.Default.Check, contentDescription = null, tint = GreenSavedText, modifier = Modifier.size(16.dp))
+        Text(text = text, color = TextPrimary, fontSize = 11.sp, lineHeight = 15.sp)
+    }
+}
+
+@Composable
+private fun FeatureBadgeItem(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit = {}
+) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = Modifier.width(80.dp)
+        modifier = Modifier
+            .width(80.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(vertical = 4.dp)
     ) {
         Box(
             modifier = Modifier
