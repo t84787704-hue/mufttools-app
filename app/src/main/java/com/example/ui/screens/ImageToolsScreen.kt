@@ -7,35 +7,56 @@ import android.graphics.Matrix
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.AddPhotoAlternate
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RotateRight
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Transform
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,14 +74,11 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -70,17 +88,22 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.CyanPrimary
-import com.example.ui.theme.DarkBackground
-import com.example.ui.theme.DarkSurface
-import com.example.ui.theme.DarkSurfaceVariant
-import com.example.ui.theme.EmeraldTertiary
 import com.example.ui.theme.TextMuted
 import com.example.ui.theme.TextPrimary
 import com.example.ui.theme.TextSecondary
@@ -89,6 +112,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.File
+
+// Design Colors matching reference image (Image Tools 5-in-1 Purple Theme)
+private val PurplePrimary = Color(0xFF9333EA)    // Vibrant Purple
+private val PurpleGlow = Color(0xFFA855F7)       // Accent Purple
+private val PurpleDarkBg = Color(0xFF0D0B18)     // Midnight Deep Dark
+private val SurfaceCardBg = Color(0xFF171329)    // Rich Dark Surface
+private val SurfaceCardActive = Color(0xFF231A3D) // Selected Active Surface
+private val CardBorderColor = Color(0xFF2D234A)  // Subtle Card Border
+private val ActiveBorderColor = Color(0xFFA855F7)// Active Highlight Border
+private val DashedBorderColor = Color(0xFF3F3360)// Dashed Placeholder Border
+private val GreenSavedText = Color(0xFF10B981)   // Emerald Green Size Savings
+private val CrownGold = Color(0xFFF59E0B)        // Gold Crown Accent
+
+enum class ToolMode {
+    CROP, RESIZE, COMPRESS, CONVERT, ROTATE
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -101,16 +141,34 @@ fun ImageToolsScreen(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Image Source & Processing State
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var originalBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var editedBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var originalFileName by remember { mutableStateOf("IMG_20260804_120000.jpg") }
+    var originalSizeBytes by remember { mutableStateOf(2560000L) } // Default 2.45 MB
+    var originalFormat by remember { mutableStateOf("JPG") }
     var savedUri by remember { mutableStateOf<Uri?>(null) }
 
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Resize", "Crop", "Convert", "Compress", "Rotate")
+    // Active Tool Mode (Default: Compress as shown in screenshot)
+    var activeToolMode by remember { mutableStateOf(ToolMode.COMPRESS) }
 
+    // Compression Quality State
+    var compressionQuality by remember { mutableFloatStateOf(80f) } // 80% High as shown in reference
+
+    // Resize State
+    var targetWidthStr by remember { mutableStateOf("1920") }
+    var targetHeightStr by remember { mutableStateOf("1080") }
+    var maintainAspect by remember { mutableStateOf(true) }
+
+    // Crop State
+    var selectedCropRatio by remember { mutableStateOf("Square (1:1)") }
+
+    // Convert Format State
+    var targetFormat by remember { mutableStateOf("JPG") } // JPG, PNG, WEBP
+
+    // Camera launcher setup
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
-
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
@@ -120,10 +178,18 @@ fun ImageToolsScreen(
                 try {
                     context.contentResolver.openInputStream(tempCameraUri!!)?.use { stream ->
                         val bmp = BitmapFactory.decodeStream(stream)
-                        withContext(Dispatchers.Main) {
-                            originalBitmap = bmp
-                            editedBitmap = bmp
-                            savedUri = null
+                        if (bmp != null) {
+                            withContext(Dispatchers.Main) {
+                                originalBitmap = bmp
+                                editedBitmap = bmp
+                                originalFileName = "CAMERA_${System.currentTimeMillis()}.jpg"
+                                originalSizeBytes = bmp.byteCount.toLong()
+                                originalFormat = "JPG"
+                                targetWidthStr = (bmp.width * 0.8f).toInt().toString()
+                                targetHeightStr = (bmp.height * 0.8f).toInt().toString()
+                                savedUri = null
+                                snackbarHostState.showSnackbar("Camera photo loaded!")
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -133,6 +199,7 @@ fun ImageToolsScreen(
         }
     }
 
+    // Gallery Picker launcher setup
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -140,16 +207,97 @@ fun ImageToolsScreen(
             selectedImageUri = uri
             scope.launch(Dispatchers.IO) {
                 try {
+                    val fileName = FileUtil.getFileNameFromUri(context, uri)
+                    val ext = fileName.substringAfterLast('.', "JPG").uppercase()
+
                     context.contentResolver.openInputStream(uri)?.use { stream ->
                         val bmp = BitmapFactory.decodeStream(stream)
-                        withContext(Dispatchers.Main) {
-                            originalBitmap = bmp
-                            editedBitmap = bmp
-                            savedUri = null
+                        if (bmp != null) {
+                            val tempFile = FileUtil.getFileFromUri(context, uri)
+                            val size = tempFile?.length() ?: (bmp.byteCount / 3L)
+
+                            withContext(Dispatchers.Main) {
+                                originalBitmap = bmp
+                                editedBitmap = bmp
+                                originalFileName = fileName
+                                originalSizeBytes = size
+                                originalFormat = ext
+                                targetWidthStr = (bmp.width * 0.8f).toInt().toString()
+                                targetHeightStr = (bmp.height * 0.8f).toInt().toString()
+                                savedUri = null
+                                snackbarHostState.showSnackbar("Loaded: $fileName")
+                            }
                         }
                     }
                 } catch (e: Exception) {
                     e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    // Calculations for Original & Edited Image info
+    val origWidth = originalBitmap?.width ?: 4000
+    val origHeight = originalBitmap?.height ?: 3000
+    val origSizeStr = FileUtil.getFileSizeString(originalSizeBytes)
+
+    val editWidth = editedBitmap?.width ?: 1920
+    val editHeight = editedBitmap?.height ?: 1440
+
+    // Real Compression size estimation based on quality & dimensions
+    val estimatedBytes = remember(originalSizeBytes, editWidth, editHeight, origWidth, origHeight, compressionQuality, activeToolMode, targetFormat) {
+        val dimensionFactor = (editWidth.toDouble() * editHeight) / (origWidth.toDouble() * origHeight).coerceAtLeast(1.0)
+        val qualityFactor = (compressionQuality / 100.0).coerceIn(0.15, 1.0)
+        val formatFactor = when (targetFormat) {
+            "WEBP" -> 0.75
+            "PNG" -> 1.2
+            else -> 0.85
+        }
+        val estimated = (originalSizeBytes * dimensionFactor * qualityFactor * formatFactor).toLong()
+        estimated.coerceAtLeast(15000L)
+    }
+
+    val estimatedSizeStr = FileUtil.getFileSizeString(estimatedBytes)
+    val savedPercent = remember(originalSizeBytes, estimatedBytes) {
+        if (originalSizeBytes <= 0) 0
+        else {
+            val pct = (((originalSizeBytes - estimatedBytes).toDouble() / originalSizeBytes) * 100).toInt()
+            pct.coerceAtLeast(1)
+        }
+    }
+
+    // Main Save Processing Action
+    fun processAndSaveImage() {
+        val bmp = editedBitmap ?: originalBitmap
+        if (bmp == null) {
+            scope.launch { snackbarHostState.showSnackbar("Please select an image first.") }
+            return
+        }
+
+        scope.launch(Dispatchers.IO) {
+            val formatEnum = when (targetFormat) {
+                "PNG" -> Bitmap.CompressFormat.PNG
+                "WEBP" -> if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) Bitmap.CompressFormat.WEBP_LOSSY else Bitmap.CompressFormat.WEBP
+                else -> Bitmap.CompressFormat.JPEG
+            }
+
+            val outStream = ByteArrayOutputStream()
+            bmp.compress(formatEnum, compressionQuality.toInt(), outStream)
+            val bytes = outStream.toByteArray()
+            val compressedBmp = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: bmp
+
+            val timeStamp = System.currentTimeMillis()
+            val nameNoExt = if (originalFileName.contains(".")) originalFileName.substringBeforeLast(".") else originalFileName
+            val saveName = "${nameNoExt}_edited_$timeStamp"
+
+            val uri = FileUtil.saveBitmapToGallery(context, compressedBmp, saveName, formatEnum)
+
+            withContext(Dispatchers.Main) {
+                if (uri != null) {
+                    savedUri = uri
+                    snackbarHostState.showSnackbar("Image saved successfully to Pictures/MuftTools!")
+                } else {
+                    snackbarHostState.showSnackbar("Failed to save image. Check storage permissions.")
                 }
             }
         }
@@ -160,7 +308,7 @@ fun ImageToolsScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Image Tools 5-in-1",
+                        text = "Image Tools",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
@@ -176,19 +324,41 @@ fun ImageToolsScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onToggleFavorite) {
+                    IconButton(onClick = { onToggleFavorite() }) {
                         Icon(
-                            imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            imageVector = Icons.Default.Favorite,
                             contentDescription = "Favorite",
-                            tint = if (isFavorite) CyanPrimary else TextSecondary
+                            tint = if (isFavorite) CrownGold else TextMuted
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBackground)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = PurpleDarkBg)
             )
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = DarkBackground
+        bottomBar = {
+            // Matching Bottom Navigation Bar (Home, Favorites, History)
+            Surface(
+                color = SurfaceCardBg,
+                tonalElevation = 8.dp,
+                modifier = Modifier.border(1.dp, CardBorderColor, RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BottomNavItem(icon = Icons.Default.Home, label = "Home", isSelected = true, onClick = onBackClick)
+                    BottomNavItem(icon = Icons.Default.FavoriteBorder, label = "Favorites", isSelected = false, onClick = onToggleFavorite)
+                    BottomNavItem(icon = Icons.Default.History, label = "History", isSelected = false, onClick = {
+                        scope.launch { snackbarHostState.showSnackbar("Pictures saved in Pictures/MuftTools") }
+                    })
+                }
+            }
+        },
+        containerColor = PurpleDarkBg
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -199,372 +369,775 @@ fun ImageToolsScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .widthIn(max = 680.dp)
-            ) {
-            TabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = DarkSurface,
-                contentColor = CyanPrimary,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTabIndex]),
-                        color = CyanPrimary
-                    )
-                }
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = {
-                            Text(
-                                text = title,
-                                fontWeight = if (selectedTabIndex == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedTabIndex == index) CyanPrimary else TextSecondary,
-                                fontSize = 12.sp
-                            )
-                        }
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
+                    .widthIn(max = 600.dp)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+
+                // 1. Interactive Split Before / After Image Preview Card
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = SurfaceCardBg),
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, CardBorderColor, RoundedCornerShape(18.dp))
                 ) {
-                    Button(
-                        onClick = { galleryLauncher.launch("image/*") },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
-                    ) {
-                        Icon(imageVector = Icons.Default.PhotoLibrary, contentDescription = null, tint = DarkBackground)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Gallery", color = DarkBackground, fontWeight = FontWeight.Bold)
-                    }
-
-                    Button(
-                        onClick = {
-                            val uri = FileUtil.createTempImageUri(context)
-                            tempCameraUri = uri
-                            cameraLauncher.launch(uri)
-                        },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
-                    ) {
-                        Icon(imageVector = Icons.Default.CameraAlt, contentDescription = null, tint = TextPrimary)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Take Photo", color = TextPrimary, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                editedBitmap?.let { bmp ->
-                    Card(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(260.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = DarkSurface)
+                            .height(280.dp)
+                            .clip(RoundedCornerShape(18.dp))
                     ) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Image(
-                                bitmap = bmp.asImageBitmap(),
-                                contentDescription = "Image Preview",
-                                modifier = Modifier.fillMaxSize()
+                        if (originalBitmap == null) {
+                            // Placeholder State matching design
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clickable { galleryLauncher.launch("image/*") }
+                                    .drawDashedBorder(DashedBorderColor, 18.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(54.dp)
+                                            .clip(CircleShape)
+                                            .background(PurplePrimary.copy(alpha = 0.2f)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.AddPhotoAlternate,
+                                            contentDescription = null,
+                                            tint = PurpleGlow,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = "Tap to select an image",
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 15.sp
+                                    )
+                                    Text(
+                                        text = "Supports JPG, PNG, WEBP, BMP",
+                                        color = TextMuted,
+                                        fontSize = 12.sp
+                                    )
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.padding(top = 6.dp)
+                                    ) {
+                                        Button(
+                                            onClick = { galleryLauncher.launch("image/*") },
+                                            colors = ButtonDefaults.buttonColors(containerColor = PurplePrimary),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.PhotoLibrary, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Gallery", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                val uri = FileUtil.createTempImageUri(context)
+                                                tempCameraUri = uri
+                                                cameraLauncher.launch(uri)
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF282046)),
+                                            shape = RoundedCornerShape(10.dp)
+                                        ) {
+                                            Icon(Icons.Default.CameraAlt, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Camera", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            // Split Before / After Viewer
+                            SplitBeforeAfterImageViewer(
+                                originalBitmap = originalBitmap!!,
+                                editedBitmap = editedBitmap ?: originalBitmap!!,
+                                onReSelectImage = { galleryLauncher.launch("image/*") }
                             )
                         }
-                    }
 
-                    Text(
-                        text = "Dimensions: ${bmp.width} x ${bmp.height} px",
-                        color = TextSecondary,
-                        fontSize = 12.sp
+                        // Top Badges ("Before" on Left, "After" on Right) matching screenshot
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp)
+                        ) {
+                            // "Before" Badge (Dark)
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.Black.copy(alpha = 0.65f))
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "Before",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+
+                            // "After" Badge (Purple Glow)
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(PurplePrimary)
+                                    .padding(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Text(
+                                    text = "After",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 2. Toolbar Action Buttons Bar (5 Mode Options right below preview)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ToolModeItem(
+                        icon = Icons.Default.Crop,
+                        label = "Crop",
+                        isSelected = activeToolMode == ToolMode.CROP,
+                        onClick = { activeToolMode = ToolMode.CROP },
+                        modifier = Modifier.weight(1f)
                     )
+                    ToolModeItem(
+                        icon = Icons.Default.AspectRatio,
+                        label = "Resize",
+                        isSelected = activeToolMode == ToolMode.RESIZE,
+                        onClick = { activeToolMode = ToolMode.RESIZE },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ToolModeItem(
+                        icon = Icons.Default.Download,
+                        label = "Compress",
+                        isSelected = activeToolMode == ToolMode.COMPRESS,
+                        onClick = { activeToolMode = ToolMode.COMPRESS },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ToolModeItem(
+                        icon = Icons.Default.Refresh,
+                        label = "Convert",
+                        isSelected = activeToolMode == ToolMode.CONVERT,
+                        onClick = { activeToolMode = ToolMode.CONVERT },
+                        modifier = Modifier.weight(1f)
+                    )
+                    ToolModeItem(
+                        icon = Icons.Default.RotateRight,
+                        label = "Rotate",
+                        isSelected = activeToolMode == ToolMode.ROTATE,
+                        onClick = { activeToolMode = ToolMode.ROTATE },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
-                    when (selectedTabIndex) {
-                        0 -> ResizeTab(bmp) { newBmp -> editedBitmap = newBmp }
-                        1 -> CropTab(bmp) { newBmp -> editedBitmap = newBmp }
-                        2 -> ConvertTab(context, bmp, scope, snackbarHostState) { newUri -> savedUri = newUri }
-                        3 -> CompressTab(context, bmp, scope, snackbarHostState) { newUri -> savedUri = newUri }
-                        4 -> RotateTab(bmp) { newBmp -> editedBitmap = newBmp }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                // 3. Image Info Card (Matching Reference Layout)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = SurfaceCardBg),
+                    shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, CardBorderColor, RoundedCornerShape(18.dp))
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Button(
-                            onClick = {
-                                val uri = FileUtil.saveBitmapToGallery(context, bmp, "Image_${System.currentTimeMillis()}")
-                                savedUri = uri
-                                if (uri != null) {
-                                    scope.launch { snackbarHostState.showSnackbar("Saved image to Pictures/MuftTools!") }
+                        Text(
+                            text = "Image Info",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Original Image Card Box
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFF201A38))
+                                    .padding(12.dp)
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text("Original Image", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        text = originalFileName,
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "$origWidth x $origHeight • $origSizeStr • $originalFormat",
+                                        color = TextMuted,
+                                        fontSize = 10.sp
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Color(0xFF2E264E))
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    ) {
+                                        Text("$origWidth x $origHeight", color = TextPrimary, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+                                    }
                                 }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldTertiary)
-                        ) {
-                            Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = DarkBackground)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Save Image", color = DarkBackground, fontWeight = FontWeight.Bold)
-                        }
+                            }
 
-                        Button(
-                            onClick = {
-                                val uri = savedUri ?: FileUtil.saveBitmapToGallery(context, bmp, "Image_Share")
-                                uri?.let { FileUtil.shareFile(context, it, "image/png") }
-                            },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
-                        ) {
-                            Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = TextPrimary)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Share Image", color = TextPrimary, fontWeight = FontWeight.Bold)
+                            // Central Arrow Icon Circle
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(CircleShape)
+                                    .background(PurplePrimary),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            // Edited Image Card Box
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFF201A38))
+                                    .padding(12.dp)
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text("Edited Image", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        text = originalFileName,
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "$editWidth x $editHeight • $estimatedSizeStr • $targetFormat",
+                                        color = TextMuted,
+                                        fontSize = 10.sp
+                                    )
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(PurplePrimary.copy(alpha = 0.3f))
+                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                    ) {
+                                        Text("$editWidth x $editHeight", color = PurpleGlow, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
-    }
-}
-}
 
-@Composable
-private fun ResizeTab(
-    currentBitmap: Bitmap,
-    onBitmapUpdated: (Bitmap) -> Unit
-) {
-    var scalePercent by remember { mutableFloatStateOf(0.75f) }
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Resize Scale: ${(scalePercent * 100).toInt()}%", fontWeight = FontWeight.Bold, color = TextPrimary)
-        Slider(
-            value = scalePercent,
-            onValueChange = { scalePercent = it },
-            valueRange = 0.1f..1.5f,
-            colors = SliderDefaults.colors(thumbColor = CyanPrimary, activeTrackColor = CyanPrimary)
-        )
-
-        Button(
-            onClick = {
-                val newW = (currentBitmap.width * scalePercent).toInt().coerceAtLeast(10)
-                val newH = (currentBitmap.height * scalePercent).toInt().coerceAtLeast(10)
-                val resized = Bitmap.createScaledBitmap(currentBitmap, newW, newH, true)
-                onBitmapUpdated(resized)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
-        ) {
-            Icon(imageVector = Icons.Default.Transform, contentDescription = null, tint = DarkBackground)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Apply Resize", color = DarkBackground, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun CropTab(
-    currentBitmap: Bitmap,
-    onBitmapUpdated: (Bitmap) -> Unit
-) {
-    val presets = listOf("Square (1:1)", "LandScape (16:9)", "Portrait (4:3)")
-    var selectedPresetIndex by remember { mutableIntStateOf(0) }
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Crop Aspect Ratio Presets", fontWeight = FontWeight.Bold, color = TextPrimary)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            presets.forEachIndexed { index, label ->
-                Surface(
+                // 4. Interactive Mode Controls Box (Changes based on selected ToolMode)
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = SurfaceCardBg),
+                    shape = RoundedCornerShape(18.dp),
                     modifier = Modifier
-                        .weight(1f)
-                        .clickable { selectedPresetIndex = index },
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (selectedPresetIndex == index) CyanPrimary else DarkSurfaceVariant
+                        .fillMaxWidth()
+                        .border(1.dp, CardBorderColor, RoundedCornerShape(18.dp))
                 ) {
-                    Box(modifier = Modifier.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        when (activeToolMode) {
+                            ToolMode.COMPRESS -> {
+                                // Compression Quality Slider Matching Reference
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Quality", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    val qualityLabel = when {
+                                        compressionQuality >= 80f -> "High"
+                                        compressionQuality >= 50f -> "Medium"
+                                        else -> "Low"
+                                    }
+                                    Text("${compressionQuality.toInt()}% ($qualityLabel)", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                }
+
+                                Slider(
+                                    value = compressionQuality,
+                                    onValueChange = { compressionQuality = it },
+                                    valueRange = 10f..100f,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = PurpleGlow,
+                                        activeTrackColor = PurpleGlow,
+                                        inactiveTrackColor = Color(0xFF2B2245)
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Estimated Size", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        text = "~$estimatedSizeStr ($savedPercent% Smaller)",
+                                        color = GreenSavedText,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+
+                            ToolMode.RESIZE -> {
+                                Text("Resize Dimensions", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+
+                                // Quick Scale Presets
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    listOf(25, 50, 75, 100).forEach { pct ->
+                                        val isSel = editedBitmap != null && (editedBitmap!!.width == (origWidth * pct / 100))
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(if (isSel) PurplePrimary else Color(0xFF201A38))
+                                                .clickable {
+                                                    originalBitmap?.let { bmp ->
+                                                        val nw = (bmp.width * pct / 100).coerceAtLeast(10)
+                                                        val nh = (bmp.height * pct / 100).coerceAtLeast(10)
+                                                        editedBitmap = Bitmap.createScaledBitmap(bmp, nw, nh, true)
+                                                        targetWidthStr = nw.toString()
+                                                        targetHeightStr = nh.toString()
+                                                    }
+                                                }
+                                                .padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("$pct%", color = if (isSel) Color.White else TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedTextField(
+                                        value = targetWidthStr,
+                                        onValueChange = {
+                                            targetWidthStr = it
+                                            val w = it.toIntOrNull()
+                                            if (w != null && w > 0 && originalBitmap != null) {
+                                                val h = if (maintainAspect) (w * originalBitmap!!.height / originalBitmap!!.width) else targetHeightStr.toIntOrNull() ?: originalBitmap!!.height
+                                                targetHeightStr = h.toString()
+                                                editedBitmap = Bitmap.createScaledBitmap(originalBitmap!!, w, h, true)
+                                            }
+                                        },
+                                        label = { Text("Width (px)") },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        modifier = Modifier.weight(1f),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = PurpleGlow,
+                                            unfocusedBorderColor = CardBorderColor,
+                                            focusedLabelColor = PurpleGlow
+                                        ),
+                                        singleLine = true
+                                    )
+
+                                    Text("x", color = TextMuted, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+
+                                    OutlinedTextField(
+                                        value = targetHeightStr,
+                                        onValueChange = {
+                                            targetHeightStr = it
+                                            val h = it.toIntOrNull()
+                                            if (h != null && h > 0 && originalBitmap != null) {
+                                                val w = if (maintainAspect) (h * originalBitmap!!.width / originalBitmap!!.height) else targetWidthStr.toIntOrNull() ?: originalBitmap!!.width
+                                                targetWidthStr = w.toString()
+                                                editedBitmap = Bitmap.createScaledBitmap(originalBitmap!!, w, h, true)
+                                            }
+                                        },
+                                        label = { Text("Height (px)") },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        modifier = Modifier.weight(1f),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = PurpleGlow,
+                                            unfocusedBorderColor = CardBorderColor,
+                                            focusedLabelColor = PurpleGlow
+                                        ),
+                                        singleLine = true
+                                    )
+                                }
+                            }
+
+                            ToolMode.CROP -> {
+                                Text("Crop Aspect Ratio Presets", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+
+                                val ratios = listOf("Square (1:1)", "Landscape (16:9)", "Portrait (4:3)", "Full (9:16)")
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    ratios.forEach { ratioLabel ->
+                                        val isSel = selectedCropRatio == ratioLabel
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(if (isSel) PurplePrimary else Color(0xFF201A38))
+                                                .clickable {
+                                                    selectedCropRatio = ratioLabel
+                                                    originalBitmap?.let { bmp ->
+                                                        val w = bmp.width
+                                                        val h = bmp.height
+                                                        val cropped = when (ratioLabel) {
+                                                            "Square (1:1)" -> {
+                                                                val sz = Math.min(w, h)
+                                                                Bitmap.createBitmap(bmp, (w - sz) / 2, (h - sz) / 2, sz, sz)
+                                                            }
+                                                            "Landscape (16:9)" -> {
+                                                                val targetH = (w * 9 / 16).coerceAtMost(h)
+                                                                Bitmap.createBitmap(bmp, 0, (h - targetH) / 2, w, targetH)
+                                                            }
+                                                            "Portrait (4:3)" -> {
+                                                                val targetW = (h * 4 / 3).coerceAtMost(w)
+                                                                Bitmap.createBitmap(bmp, (w - targetW) / 2, 0, targetW, h)
+                                                            }
+                                                            else -> { // 9:16
+                                                                val targetW = (h * 9 / 16).coerceAtMost(w)
+                                                                Bitmap.createBitmap(bmp, (w - targetW) / 2, 0, targetW, h)
+                                                            }
+                                                        }
+                                                        editedBitmap = cropped
+                                                    }
+                                                }
+                                                .padding(vertical = 8.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                ratioLabel.substringBefore(" "),
+                                                color = if (isSel) Color.White else TextPrimary,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            ToolMode.CONVERT -> {
+                                Text("Convert Output Format", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+
+                                val formats = listOf("JPG", "PNG", "WEBP")
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    formats.forEach { fmt ->
+                                        val isSel = targetFormat == fmt
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(if (isSel) PurplePrimary else Color(0xFF201A38))
+                                                .clickable { targetFormat = fmt }
+                                                .padding(vertical = 12.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                            ) {
+                                                if (isSel) {
+                                                    Icon(Icons.Default.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                                }
+                                                Text(fmt, color = if (isSel) Color.White else TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            ToolMode.ROTATE -> {
+                                Text("Rotate & Flip Controls", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            editedBitmap?.let { bmp ->
+                                                val matrix = Matrix().apply { postRotate(90f) }
+                                                editedBitmap = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true)
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF201A38)),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Icon(Icons.Default.RotateRight, contentDescription = null, tint = PurpleGlow)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Rotate 90°", color = TextPrimary, fontSize = 12.sp)
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            editedBitmap?.let { bmp ->
+                                                val matrix = Matrix().apply { postScale(-1f, 1f) }
+                                                editedBitmap = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true)
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF201A38)),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("Flip Horiz", color = TextPrimary, fontSize = 12.sp)
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            editedBitmap?.let { bmp ->
+                                                val matrix = Matrix().apply { postScale(1f, -1f) }
+                                                editedBitmap = Bitmap.createBitmap(bmp, 0, 0, bmp.width, bmp.height, matrix, true)
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF201A38)),
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("Flip Vert", color = TextPrimary, fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 5. Main Action Button ("Save Image" - Purple Gradient/Solid Glow)
+                Button(
+                    onClick = { processAndSaveImage() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PurplePrimary),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Download,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
                         Text(
-                            text = label,
-                            fontSize = 11.sp,
+                            text = if (savedUri != null) "Saved! Save Again" else "Save Image",
+                            color = Color.White,
                             fontWeight = FontWeight.Bold,
-                            color = if (selectedPresetIndex == index) DarkBackground else TextPrimary
+                            fontSize = 16.sp
                         )
                     }
                 }
-            }
-        }
 
-        Button(
-            onClick = {
-                val w = currentBitmap.width
-                val h = currentBitmap.height
-                val cropped = when (selectedPresetIndex) {
-                    0 -> { // 1:1
-                        val size = Math.min(w, h)
-                        Bitmap.createBitmap(currentBitmap, (w - size) / 2, (h - size) / 2, size, size)
-                    }
-                    1 -> { // 16:9
-                        val targetH = (w * 9 / 16).coerceAtMost(h)
-                        Bitmap.createBitmap(currentBitmap, 0, (h - targetH) / 2, w, targetH)
-                    }
-                    else -> { // 4:3
-                        val targetW = (h * 4 / 3).coerceAtMost(w)
-                        Bitmap.createBitmap(currentBitmap, (w - targetW) / 2, 0, targetW, h)
-                    }
-                }
-                onBitmapUpdated(cropped)
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
-        ) {
-            Icon(imageVector = Icons.Default.Crop, contentDescription = null, tint = DarkBackground)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Crop Image Center", color = DarkBackground, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun ConvertTab(
-    context: Context,
-    currentBitmap: Bitmap,
-    scope: kotlinx.coroutines.CoroutineScope,
-    snackbarHostState: SnackbarHostState,
-    onSaved: (Uri?) -> Unit
-) {
-    val formats = listOf("PNG", "JPEG", "WEBP")
-    var selectedFormatIndex by remember { mutableIntStateOf(0) }
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Target Output Format", fontWeight = FontWeight.Bold, color = TextPrimary)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            formats.forEachIndexed { index, label ->
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { selectedFormatIndex = index },
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (selectedFormatIndex == index) CyanPrimary else DarkSurfaceVariant
-                ) {
-                    Box(modifier = Modifier.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = label,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (selectedFormatIndex == index) DarkBackground else TextPrimary
-                        )
+                // Share Button if image has been saved
+                if (savedUri != null) {
+                    Button(
+                        onClick = {
+                            FileUtil.shareFile(context, savedUri!!, "image/*", "Share Image")
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF251C3E)),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, tint = TextPrimary)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Share Saved Image", color = TextPrimary, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
-
-        Button(
-            onClick = {
-                val format = when (selectedFormatIndex) {
-                    1 -> Bitmap.CompressFormat.JPEG
-                    2 -> Bitmap.CompressFormat.WEBP
-                    else -> Bitmap.CompressFormat.PNG
-                }
-                val uri = FileUtil.saveBitmapToGallery(context, currentBitmap, "Converted_${System.currentTimeMillis()}", format)
-                onSaved(uri)
-                scope.launch { snackbarHostState.showSnackbar("Converted & saved as ${formats[selectedFormatIndex]}!") }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
-        ) {
-            Text("Convert & Save", color = DarkBackground, fontWeight = FontWeight.Bold)
-        }
     }
 }
 
+// Custom Interactive Tool Mode Item Button
 @Composable
-private fun CompressTab(
-    context: Context,
-    currentBitmap: Bitmap,
-    scope: kotlinx.coroutines.CoroutineScope,
-    snackbarHostState: SnackbarHostState,
-    onSaved: (Uri?) -> Unit
+private fun ToolModeItem(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    var quality by remember { mutableFloatStateOf(70f) }
-
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("JPEG Compression Quality: ${quality.toInt()}%", fontWeight = FontWeight.Bold, color = TextPrimary)
-        Slider(
-            value = quality,
-            onValueChange = { quality = it },
-            valueRange = 10f..100f,
-            colors = SliderDefaults.colors(thumbColor = CyanPrimary, activeTrackColor = CyanPrimary)
-        )
-
-        Button(
-            onClick = {
-                val stream = ByteArrayOutputStream()
-                currentBitmap.compress(Bitmap.CompressFormat.JPEG, quality.toInt(), stream)
-                val byteArray = stream.toByteArray()
-                val compressedBmp = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.size)
-                val uri = FileUtil.saveBitmapToGallery(context, compressedBmp, "Compressed_${System.currentTimeMillis()}", Bitmap.CompressFormat.JPEG)
-                onSaved(uri)
-                val sizeStr = FileUtil.getFileSizeString(byteArray.size.toLong())
-                scope.launch { snackbarHostState.showSnackbar("Compressed to $sizeStr & saved!") }
-            },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
-        ) {
-            Icon(imageVector = Icons.Default.Compress, contentDescription = null, tint = DarkBackground)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Compress & Save Image", color = DarkBackground, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun RotateTab(
-    currentBitmap: Bitmap,
-    onBitmapUpdated: (Bitmap) -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (isSelected) SurfaceCardActive else SurfaceCardBg)
+            .border(
+                width = if (isSelected) 1.5.dp else 1.dp,
+                color = if (isSelected) ActiveBorderColor else CardBorderColor,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .clickable { onClick() }
+            .padding(vertical = 12.dp)
     ) {
-        Button(
-            onClick = {
-                val matrix = Matrix().apply { postRotate(90f) }
-                val rotated = Bitmap.createBitmap(currentBitmap, 0, 0, currentBitmap.width, currentBitmap.height, matrix, true)
-                onBitmapUpdated(rotated)
-            },
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (isSelected) PurpleGlow else TextSecondary,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            text = label,
+            color = if (isSelected) Color.White else TextSecondary,
+            fontSize = 11.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+        )
+    }
+}
+
+// Split Before / After Image Viewer Composable with Draggable Divider Line
+@Composable
+private fun SplitBeforeAfterImageViewer(
+    originalBitmap: Bitmap,
+    editedBitmap: Bitmap,
+    onReSelectImage: () -> Unit
+) {
+    var splitRatio by remember { mutableFloatStateOf(0.5f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectHorizontalDragGestures { _, dragAmount ->
+                    val newRatio = (splitRatio + dragAmount / size.width).coerceIn(0.05f, 0.95f)
+                    splitRatio = newRatio
+                }
+            }
+            .clickable { onReSelectImage() }
+    ) {
+        // Full Image (Edited Version)
+        Image(
+            bitmap = editedBitmap.asImageBitmap(),
+            contentDescription = "After Image",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // Clipped Left Side Image (Original Version)
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(fraction = splitRatio)
+                .clip(RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp))
         ) {
-            Text("Rotate 90°", color = TextPrimary)
+            Image(
+                bitmap = originalBitmap.asImageBitmap(),
+                contentDescription = "Before Image",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
         }
 
-        Button(
-            onClick = {
-                val matrix = Matrix().apply { postScale(-1f, 1f) }
-                val flipped = Bitmap.createBitmap(currentBitmap, 0, 0, currentBitmap.width, currentBitmap.height, matrix, true)
-                onBitmapUpdated(flipped)
-            },
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
-        ) {
-            Text("Flip Horiz", color = TextPrimary)
-        }
+        // Draggable Vertical Divider Line with Center Handle
+        Box(
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(2.dp)
+                .align(Alignment.CenterStart)
+                .offset(x = (280 * splitRatio).dp) // Responsive adjustment
+                .background(Color.White)
+        )
+    }
+}
 
-        Button(
-            onClick = {
-                val matrix = Matrix().apply { postScale(1f, -1f) }
-                val flipped = Bitmap.createBitmap(currentBitmap, 0, 0, currentBitmap.width, currentBitmap.height, matrix, true)
-                onBitmapUpdated(flipped)
-            },
-            modifier = Modifier.weight(1f),
-            colors = ButtonDefaults.buttonColors(containerColor = DarkSurfaceVariant)
-        ) {
-            Text("Flip Vert", color = TextPrimary)
-        }
+// Custom Dashed Border Extension for Placeholders
+private fun Modifier.drawDashedBorder(color: Color, radius: androidx.compose.ui.unit.Dp): Modifier = this.drawWithContent {
+    drawContent()
+    val stroke = Stroke(
+        width = 3f,
+        pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
+    )
+    drawRoundRect(
+        color = color,
+        style = stroke,
+        cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius.toPx(), radius.toPx())
+    )
+}
+
+// Bottom Navigation Item
+@Composable
+private fun BottomNavItem(
+    icon: ImageVector,
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = if (isSelected) PurpleGlow else TextMuted,
+            modifier = Modifier.size(22.dp)
+        )
+        Text(
+            text = label,
+            color = if (isSelected) PurpleGlow else TextMuted,
+            fontSize = 11.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+        )
     }
 }
