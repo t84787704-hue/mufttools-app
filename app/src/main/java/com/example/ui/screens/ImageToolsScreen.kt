@@ -164,9 +164,25 @@ enum class CropRatio(val displayName: String) {
     }
 }
 
+private fun Float.coerceInSafe(minVal: Float, maxVal: Float): Float {
+    val actualMin = Math.min(minVal, maxVal)
+    val actualMax = Math.max(minVal, maxVal)
+    return this.coerceIn(actualMin, actualMax)
+}
+
 fun calculateDefaultCropRect(imageRect: Rect, targetRatio: Float?): Rect {
     if (imageRect.width <= 0 || imageRect.height <= 0) return Rect.Zero
-    if (targetRatio == null) return imageRect
+    if (targetRatio == null) {
+        // Free ratio: default to 95% centered frame so handles are easy to grab
+        val insetX = imageRect.width * 0.025f
+        val insetY = imageRect.height * 0.025f
+        return Rect(
+            imageRect.left + insetX,
+            imageRect.top + insetY,
+            imageRect.right - insetX,
+            imageRect.bottom - insetY
+        )
+    }
 
     val imgW = imageRect.width
     val imgH = imageRect.height
@@ -224,7 +240,7 @@ fun updateCropRect(
     dx: Float,
     dy: Float,
     targetRatio: Float?,
-    minSize: Float = 60f
+    minSize: Float = 40f
 ): Rect {
     var l = current.left
     var t = current.top
@@ -232,101 +248,112 @@ fun updateCropRect(
     var b = current.bottom
 
     if (handle == CropHandle.CENTER) {
-        val w = current.width
-        val h = current.height
-        val newL = (l + dx).coerceIn(imageRect.left, imageRect.right - w)
-        val newT = (t + dy).coerceIn(imageRect.top, imageRect.bottom - h)
+        val w = current.width.coerceAtMost(imageRect.width)
+        val h = current.height.coerceAtMost(imageRect.height)
+        val maxL = (imageRect.right - w).coerceAtLeast(imageRect.left)
+        val maxT = (imageRect.bottom - h).coerceAtLeast(imageRect.top)
+        val newL = (l + dx).coerceInSafe(imageRect.left, maxL)
+        val newT = (t + dy).coerceInSafe(imageRect.top, maxT)
         return Rect(newL, newT, newL + w, newT + h)
     }
 
+    val maxRightForL = (r - minSize).coerceAtLeast(imageRect.left)
+    val maxBottomForT = (b - minSize).coerceAtLeast(imageRect.top)
+    val minLeftForR = (l + minSize).coerceAtMost(imageRect.right)
+    val minTopForB = (t + minSize).coerceAtMost(imageRect.bottom)
+
     when (handle) {
         CropHandle.TOP_LEFT -> {
-            l = (l + dx).coerceIn(imageRect.left, r - minSize)
-            t = (t + dy).coerceIn(imageRect.top, b - minSize)
+            l = (l + dx).coerceInSafe(imageRect.left, maxRightForL)
+            t = (t + dy).coerceInSafe(imageRect.top, maxBottomForT)
             if (targetRatio != null) {
                 val newW = r - l
                 val newH = newW / targetRatio
-                t = (b - newH).coerceIn(imageRect.top, b - minSize)
+                val calcT = b - newH
+                t = calcT.coerceInSafe(imageRect.top, maxBottomForT)
                 l = r - (b - t) * targetRatio
             }
         }
         CropHandle.TOP_RIGHT -> {
-            r = (r + dx).coerceIn(l + minSize, imageRect.right)
-            t = (t + dy).coerceIn(imageRect.top, b - minSize)
+            r = (r + dx).coerceInSafe(minLeftForR, imageRect.right)
+            t = (t + dy).coerceInSafe(imageRect.top, maxBottomForT)
             if (targetRatio != null) {
                 val newW = r - l
                 val newH = newW / targetRatio
-                t = (b - newH).coerceIn(imageRect.top, b - minSize)
+                val calcT = b - newH
+                t = calcT.coerceInSafe(imageRect.top, maxBottomForT)
                 r = l + (b - t) * targetRatio
             }
         }
         CropHandle.BOTTOM_LEFT -> {
-            l = (l + dx).coerceIn(imageRect.left, r - minSize)
-            b = (b + dy).coerceIn(t + minSize, imageRect.bottom)
+            l = (l + dx).coerceInSafe(imageRect.left, maxRightForL)
+            b = (b + dy).coerceInSafe(minTopForB, imageRect.bottom)
             if (targetRatio != null) {
                 val newW = r - l
                 val newH = newW / targetRatio
-                b = (t + newH).coerceIn(t + minSize, imageRect.bottom)
+                val calcB = t + newH
+                b = calcB.coerceInSafe(minTopForB, imageRect.bottom)
                 l = r - (b - t) * targetRatio
             }
         }
         CropHandle.BOTTOM_RIGHT -> {
-            r = (r + dx).coerceIn(l + minSize, imageRect.right)
-            b = (b + dy).coerceIn(t + minSize, imageRect.bottom)
+            r = (r + dx).coerceInSafe(minLeftForR, imageRect.right)
+            b = (b + dy).coerceInSafe(minTopForB, imageRect.bottom)
             if (targetRatio != null) {
                 val newW = r - l
                 val newH = newW / targetRatio
-                b = (t + newH).coerceIn(t + minSize, imageRect.bottom)
+                val calcB = t + newH
+                b = calcB.coerceInSafe(minTopForB, imageRect.bottom)
                 r = l + (b - t) * targetRatio
             }
         }
         CropHandle.LEFT -> {
-            l = (l + dx).coerceIn(imageRect.left, r - minSize)
+            l = (l + dx).coerceInSafe(imageRect.left, maxRightForL)
             if (targetRatio != null) {
                 val newW = r - l
                 val newH = newW / targetRatio
                 val centerY = (t + b) / 2f
-                t = (centerY - newH / 2f).coerceAtLeast(imageRect.top)
-                b = (t + newH).coerceAtMost(imageRect.bottom)
+                t = (centerY - newH / 2f).coerceInSafe(imageRect.top, imageRect.bottom - minSize)
+                b = (t + newH).coerceInSafe(t + minSize, imageRect.bottom)
             }
         }
         CropHandle.RIGHT -> {
-            r = (r + dx).coerceIn(l + minSize, imageRect.right)
+            r = (r + dx).coerceInSafe(minLeftForR, imageRect.right)
             if (targetRatio != null) {
                 val newW = r - l
                 val newH = newW / targetRatio
                 val centerY = (t + b) / 2f
-                t = (centerY - newH / 2f).coerceAtLeast(imageRect.top)
-                b = (t + newH).coerceAtMost(imageRect.bottom)
+                t = (centerY - newH / 2f).coerceInSafe(imageRect.top, imageRect.bottom - minSize)
+                b = (t + newH).coerceInSafe(t + minSize, imageRect.bottom)
             }
         }
         CropHandle.TOP -> {
-            t = (t + dy).coerceIn(imageRect.top, b - minSize)
+            t = (t + dy).coerceInSafe(imageRect.top, maxBottomForT)
             if (targetRatio != null) {
                 val newH = b - t
                 val newW = newH * targetRatio
                 val centerX = (l + r) / 2f
-                l = (centerX - newW / 2f).coerceAtLeast(imageRect.left)
-                r = (l + newW).coerceAtMost(imageRect.right)
+                l = (centerX - newW / 2f).coerceInSafe(imageRect.left, imageRect.right - minSize)
+                r = (l + newW).coerceInSafe(l + minSize, imageRect.right)
             }
         }
         CropHandle.BOTTOM -> {
-            b = (b + dy).coerceIn(t + minSize, imageRect.bottom)
+            b = (b + dy).coerceInSafe(minTopForB, imageRect.bottom)
             if (targetRatio != null) {
                 val newH = b - t
                 val newW = newH * targetRatio
                 val centerX = (l + r) / 2f
-                l = (centerX - newW / 2f).coerceAtLeast(imageRect.left)
-                r = (l + newW).coerceAtMost(imageRect.right)
+                l = (centerX - newW / 2f).coerceInSafe(imageRect.left, imageRect.right - minSize)
+                r = (l + newW).coerceInSafe(l + minSize, imageRect.right)
             }
         }
         else -> {}
     }
 
-    val finalL = l.coerceIn(imageRect.left, imageRect.right - minSize)
-    val finalT = t.coerceIn(imageRect.top, imageRect.bottom - minSize)
-    val finalR = r.coerceIn(finalL + minSize, imageRect.right)
-    val finalB = b.coerceIn(finalT + minSize, imageRect.bottom)
+    val finalL = l.coerceInSafe(imageRect.left, (imageRect.right - minSize).coerceAtLeast(imageRect.left))
+    val finalT = t.coerceInSafe(imageRect.top, (imageRect.bottom - minSize).coerceAtLeast(imageRect.top))
+    val finalR = r.coerceInSafe((finalL + minSize).coerceAtMost(imageRect.right), imageRect.right)
+    val finalB = b.coerceInSafe((finalT + minSize).coerceAtMost(imageRect.bottom), imageRect.bottom)
 
     return Rect(finalL, finalT, finalR, finalB)
 }
@@ -405,14 +432,19 @@ private fun InteractiveCropEditor(
                     detectTransformGestures { _, pan, zoom, _ ->
                         if (zoom != 1f && activeHandle == CropHandle.NONE && imageRect.width > 0) {
                             val center = cropRect.center
-                            val newW = (cropRect.width * zoom).coerceIn(60f, imageRect.width)
+                            val maxW = imageRect.width
+                            val maxH = imageRect.height
+                            val newW = (cropRect.width * zoom).coerceInSafe(40f, maxW)
                             val ratio = cropRatio.getTargetRatio(bitmap.width, bitmap.height)
-                            val newH = if (ratio != null) newW / ratio else (cropRect.height * zoom).coerceIn(60f, imageRect.height)
+                            val newH = if (ratio != null) newW / ratio else (cropRect.height * zoom).coerceInSafe(40f, maxH)
 
-                            val l = (center.x - newW / 2f).coerceIn(imageRect.left, imageRect.right - newW)
-                            val t = (center.y - newH / 2f).coerceIn(imageRect.top, imageRect.bottom - newH)
-                            val r = l + newW
-                            val b = t + newH
+                            val maxL = (imageRect.right - newW).coerceAtLeast(imageRect.left)
+                            val maxT = (imageRect.bottom - newH).coerceAtLeast(imageRect.top)
+
+                            val l = (center.x - newW / 2f).coerceInSafe(imageRect.left, maxL)
+                            val t = (center.y - newH / 2f).coerceInSafe(imageRect.top, maxT)
+                            val r = (l + newW).coerceAtMost(imageRect.right)
+                            val b = (t + newH).coerceAtMost(imageRect.bottom)
 
                             val updated = Rect(l, t, r, b)
                             cropRect = updated
@@ -1366,23 +1398,39 @@ fun ImageToolsScreen(
                                             val ir = currentImageRect
                                             val srcBmp = editedBitmap ?: originalBitmap
                                             if (cr != null && ir != null && srcBmp != null && ir.width > 0 && ir.height > 0) {
-                                                val normLeft = ((cr.left - ir.left) / ir.width).coerceIn(0f, 1f)
-                                                val normTop = ((cr.top - ir.top) / ir.height).coerceIn(0f, 1f)
-                                                val normRight = ((cr.right - ir.left) / ir.width).coerceIn(0f, 1f)
-                                                val normBottom = ((cr.bottom - ir.top) / ir.height).coerceIn(0f, 1f)
+                                                try {
+                                                    val normLeft = ((cr.left - ir.left) / ir.width).coerceInSafe(0f, 1f)
+                                                    val normTop = ((cr.top - ir.top) / ir.height).coerceInSafe(0f, 1f)
+                                                    val normRight = ((cr.right - ir.left) / ir.width).coerceInSafe(0f, 1f)
+                                                    val normBottom = ((cr.bottom - ir.top) / ir.height).coerceInSafe(0f, 1f)
 
-                                                val cropX = (normLeft * srcBmp.width).toInt().coerceIn(0, srcBmp.width - 1)
-                                                val cropY = (normTop * srcBmp.height).toInt().coerceIn(0, srcBmp.height - 1)
-                                                val cropW = ((normRight - normLeft) * srcBmp.width).toInt().coerceIn(1, srcBmp.width - cropX)
-                                                val cropH = ((normBottom - normTop) * srcBmp.height).toInt().coerceIn(1, srcBmp.height - cropY)
+                                                    var cropX = (normLeft * srcBmp.width).toInt().coerceIn(0, (srcBmp.width - 1).coerceAtLeast(0))
+                                                    var cropY = (normTop * srcBmp.height).toInt().coerceIn(0, (srcBmp.height - 1).coerceAtLeast(0))
+                                                    var cropW = ((normRight - normLeft) * srcBmp.width).toInt()
+                                                    var cropH = ((normBottom - normTop) * srcBmp.height).toInt()
 
-                                                if (cropW > 0 && cropH > 0) {
-                                                    pushToUndo(srcBmp)
-                                                    val cropped = Bitmap.createBitmap(srcBmp, cropX, cropY, cropW, cropH)
-                                                    editedBitmap = cropped
-                                                    targetWidthStr = cropped.width.toString()
-                                                    targetHeightStr = cropped.height.toString()
-                                                    scope.launch { snackbarHostState.showSnackbar("Crop applied!") }
+                                                    if (cropX + cropW > srcBmp.width) {
+                                                        cropW = srcBmp.width - cropX
+                                                    }
+                                                    if (cropY + cropH > srcBmp.height) {
+                                                        cropH = srcBmp.height - cropY
+                                                    }
+                                                    cropW = cropW.coerceIn(1, (srcBmp.width - cropX).coerceAtLeast(1))
+                                                    cropH = cropH.coerceIn(1, (srcBmp.height - cropY).coerceAtLeast(1))
+
+                                                    if (cropW > 0 && cropH > 0 && cropX >= 0 && cropY >= 0 && (cropX + cropW <= srcBmp.width) && (cropY + cropH <= srcBmp.height)) {
+                                                        pushToUndo(srcBmp)
+                                                        val cropped = Bitmap.createBitmap(srcBmp, cropX, cropY, cropW, cropH)
+                                                        editedBitmap = cropped
+                                                        targetWidthStr = cropped.width.toString()
+                                                        targetHeightStr = cropped.height.toString()
+                                                        scope.launch { snackbarHostState.showSnackbar("Crop applied!") }
+                                                    } else {
+                                                        scope.launch { snackbarHostState.showSnackbar("Invalid crop area selected") }
+                                                    }
+                                                } catch (e: Exception) {
+                                                    e.printStackTrace()
+                                                    scope.launch { snackbarHostState.showSnackbar("Could not crop image: ${e.localizedMessage ?: "Error"}") }
                                                 }
                                             } else if (originalBitmap == null) {
                                                 scope.launch { snackbarHostState.showSnackbar("Please select an image first") }

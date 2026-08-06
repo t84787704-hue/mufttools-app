@@ -22,6 +22,12 @@ import androidx.compose.ui.unit.dp
 import com.example.ui.theme.CyanPrimary
 import com.example.util.CropCorners
 
+private fun Float.coerceInSafe(minVal: Float, maxVal: Float): Float {
+    val actualMin = Math.min(minVal, maxVal)
+    val actualMax = Math.max(minVal, maxVal)
+    return this.coerceIn(actualMin, actualMax)
+}
+
 @Composable
 fun CropOverlay(
     cropCorners: CropCorners,
@@ -73,26 +79,26 @@ fun CropOverlay(
                             val newCorners = when (activeHandle) {
                                 "TL" -> corners.copy(
                                     topLeft = Offset(
-                                        (corners.topLeft.x + dx).coerceIn(0f, corners.topRight.x - 0.05f),
-                                        (corners.topLeft.y + dy).coerceIn(0f, corners.bottomLeft.y - 0.05f)
+                                        (corners.topLeft.x + dx).coerceInSafe(0f, corners.topRight.x - 0.05f),
+                                        (corners.topLeft.y + dy).coerceInSafe(0f, corners.bottomLeft.y - 0.05f)
                                     )
                                 )
                                 "TR" -> corners.copy(
                                     topRight = Offset(
-                                        (corners.topRight.x + dx).coerceIn(corners.topLeft.x + 0.05f, 1f),
-                                        (corners.topRight.y + dy).coerceIn(0f, corners.bottomRight.y - 0.05f)
+                                        (corners.topRight.x + dx).coerceInSafe(corners.topLeft.x + 0.05f, 1f),
+                                        (corners.topRight.y + dy).coerceInSafe(0f, corners.bottomRight.y - 0.05f)
                                     )
                                 )
                                 "BR" -> corners.copy(
                                     bottomRight = Offset(
-                                        (corners.bottomRight.x + dx).coerceIn(corners.bottomLeft.x + 0.05f, 1f),
-                                        (corners.bottomRight.y + dy).coerceIn(corners.topRight.y + 0.05f, 1f)
+                                        (corners.bottomRight.x + dx).coerceInSafe(corners.bottomLeft.x + 0.05f, 1f),
+                                        (corners.bottomRight.y + dy).coerceInSafe(corners.topRight.y + 0.05f, 1f)
                                     )
                                 )
                                 "BL" -> corners.copy(
                                     bottomLeft = Offset(
-                                        (corners.bottomLeft.x + dx).coerceIn(0f, corners.bottomRight.x - 0.05f),
-                                        (corners.bottomLeft.y + dy).coerceIn(corners.topLeft.y + 0.05f, 1f)
+                                        (corners.bottomLeft.x + dx).coerceInSafe(0f, corners.bottomRight.x - 0.05f),
+                                        (corners.bottomLeft.y + dy).coerceInSafe(corners.topLeft.y + 0.05f, 1f)
                                     )
                                 )
                                 else -> corners
