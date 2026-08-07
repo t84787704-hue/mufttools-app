@@ -14,4 +14,3 @@ MuftTools is a fast, privacy-focused, offline-capable utility app built with Kot
 - Android SDK 34+
 - Kotlin 2.0+
 - Jetpack Compose with Material Design 3
-Last updated for testing.

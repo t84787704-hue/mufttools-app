@@ -26,6 +26,12 @@ android {
   }
 
   signingConfigs {
+    getByName("debug") {
+      storeFile = rootProject.file("debug.keystore")
+      storePassword = "android"
+      keyAlias = "androiddebugkey"
+      keyPassword = "android"
+    }
     create("release") {
       val ksFile = file("mufttools-release.jks").takeIf { it.exists() }
         ?: file("${rootDir}/mufttools-release.jks").takeIf { it.exists() }
@@ -50,6 +56,7 @@ android {
     debug {
       isMinifyEnabled = false
       isShrinkResources = false
+      signingConfig = signingConfigs.getByName("debug")
     }
   }
   compileOptions {
