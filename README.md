@@ -1,3 +1,5 @@
+
+
 # MuftTools - All-in-One Utility Android App
 
 MuftTools is a fast, privacy-focused, offline-capable utility app built with Kotlin and Jetpack Compose.
@@ -14,3 +16,4 @@ MuftTools is a fast, privacy-focused, offline-capable utility app built with Kot
 - Android SDK 34+
 - Kotlin 2.0+
 - Jetpack Compose with Material Design 3
+
