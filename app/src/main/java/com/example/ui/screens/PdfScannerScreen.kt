@@ -421,10 +421,10 @@ fun PdfScannerScreen(
                                 scope.launch(Dispatchers.IO) {
                                     isProcessing = true
                                     val rotated = ImageProcessingUtil.rotateBitmap(activePage.originalBitmap, 90f)
-                                    val autoCorners = ImageProcessingUtil.autoDetectEdges(rotated)
+                                    val rotatedCorners = rotateCropCorners90Clockwise(activePage.cropCorners)
                                     withContext(Dispatchers.Main) {
                                         activePage.originalBitmap = rotated
-                                        activePage.cropCorners = autoCorners
+                                        activePage.cropCorners = rotatedCorners
                                         isProcessing = false
                                     }
                                 }
@@ -934,6 +934,15 @@ fun CameraScannerView(
     }
 }
 
+private fun rotateCropCorners90Clockwise(corners: CropCorners): CropCorners {
+    return CropCorners(
+        topLeft = Offset((1f - corners.bottomLeft.y).coerceIn(0f, 1f), corners.bottomLeft.x.coerceIn(0f, 1f)),
+        topRight = Offset((1f - corners.topLeft.y).coerceIn(0f, 1f), corners.topLeft.x.coerceIn(0f, 1f)),
+        bottomRight = Offset((1f - corners.topRight.y).coerceIn(0f, 1f), corners.topRight.x.coerceIn(0f, 1f)),
+        bottomLeft = Offset((1f - corners.bottomRight.y).coerceIn(0f, 1f), corners.bottomRight.x.coerceIn(0f, 1f))
+    )
+}
+
 @Composable
 fun PageEditView(
     page: ScannedPage,
@@ -953,7 +962,7 @@ fun PageEditView(
     var isCropMode by remember { mutableStateOf(false) }
 
     // Pre-rendered thumbnails for filter carousel
-    val filterThumbnails = remember(page.originalBitmap, page.isCropped, isCropMode) {
+    val filterThumbnails = remember(page.originalBitmap, page.isCropped, page.cropCorners, isCropMode) {
         val baseBmp = if (page.isCropped && !isCropMode) ImageProcessingUtil.cropBitmap(page.originalBitmap, page.cropCorners) else page.originalBitmap
         val thumb = Bitmap.createScaledBitmap(baseBmp, 120, (120f * baseBmp.height / baseBmp.width).toInt().coerceAtLeast(120), false)
         ImageFilterType.values().associateWith { filter ->
@@ -961,7 +970,7 @@ fun PageEditView(
         }
     }
 
-    val processedBitmap = remember(page.originalBitmap, page.filter, page.isCropped, isCropMode) {
+    val processedBitmap = remember(page.originalBitmap, page.filter, page.isCropped, page.cropCorners, isCropMode) {
         page.renderProcessed()
     }
 
@@ -1016,7 +1025,11 @@ fun PageEditView(
             val containerW = maxWidth
             val containerH = maxHeight
 
-            val currentBmp = if (isCropMode) page.originalBitmap else processedBitmap
+            val currentBmp = if (isCropMode) {
+                ImageProcessingUtil.applyFilter(page.originalBitmap, page.filter)
+            } else {
+                processedBitmap
+            }
             val bmpW = currentBmp.width.toFloat().coerceAtLeast(1f)
             val bmpH = currentBmp.height.toFloat().coerceAtLeast(1f)
 
@@ -1209,7 +1222,7 @@ fun PageEditView(
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("Filter", color = Color.White, fontSize = 11.sp)
+                    Text("Auto Crop", color = Color.White, fontSize = 11.sp)
                 }
 
                 // 3. Rotate
