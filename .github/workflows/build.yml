@@ -27,6 +27,7 @@ jobs:
         run: |
           if [ -f debug.keystore.base64 ]; then
             base64 -d debug.keystore.base64 > debug.keystore
+            base64 -d debug.keystore.base64 > app/debug.keystore
           fi
           if [ -f mufttools-release.jks.base64 ]; then
             base64 -d mufttools-release.jks.base64 > mufttools-release.jks
