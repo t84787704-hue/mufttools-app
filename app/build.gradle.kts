@@ -30,12 +30,13 @@ android {
       val ksFile = file("${rootDir}/debug.keystore").takeIf { it.exists() }
         ?: file("debug.keystore").takeIf { it.exists() }
         ?: file("${rootDir}/app/debug.keystore").takeIf { it.exists() }
-        ?: rootProject.file("debug.keystore")
 
-      storeFile = ksFile
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      if (ksFile != null) {
+        storeFile = ksFile
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
     create("release") {
       val ksFile = file("mufttools-release.jks").takeIf { it.exists() }
