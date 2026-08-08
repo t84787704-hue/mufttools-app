@@ -18,7 +18,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: '17'
           cache: gradle
 
       - name: Restore Release Keystore
@@ -28,11 +28,8 @@ jobs:
             cp mufttools-release.jks app/mufttools-release.jks
           fi
 
-      - name: Grant execute permission
-        run: chmod +x gradlew
-
       - name: Build Release APK
-        run: ./gradlew assembleRelease --stacktrace
+        run: gradle :app:assembleRelease --stacktrace
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
